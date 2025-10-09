@@ -47,11 +47,8 @@ func (l *LoginUsecase) Execute(input LoginUsecaseInput) (LoginUsecaseOutput, err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(customerSchema.Password), []byte(input.Password))
-	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
-		return LoginUsecaseOutput{}, errors.New("email or password is incorrect")
-	}
 	if err != nil {
-		return LoginUsecaseOutput{}, err
+		return LoginUsecaseOutput{}, errors.New("email or password is incorrect")
 	}
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{

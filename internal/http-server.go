@@ -100,8 +100,10 @@ func (h *HttpServer) Ready() {
 	customerDAO := daos.NewCustomerDAO(pgxPool)
 
 	loginUsecase := usecases.NewLoginUsecase(customerDAO, awsSecretsGateway)
+	registerUsecase := usecases.NewRegisterUsecase(customerDAO)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)
+	registerHandler := handlers.NewRegisterHandler(jsonBodyValidator, registerUsecase)
 
 	v1 := h.echo.Group("/v1")
 	h.echo.GET("/health", func(c echo.Context) error {
@@ -109,6 +111,7 @@ func (h *HttpServer) Ready() {
 	})
 
 	v1.POST("/login", loginHandler.Handle)
+	v1.POST("/register", registerHandler.Handle)
 
 	h.logger.Info("http server is now ready")
 }

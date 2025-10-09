@@ -155,7 +155,7 @@ func (l *LoginSuite) Test4() {
 }
 
 func (l *LoginSuite) Test5() {
-	l.Run("when adding logging in and body is invalid, then returns 400", func() {
+	l.Run("when logging in and body is invalid, then returns 400", func() {
 		templates := []map[string]string{
 			{
 				"body": `{}`,
