@@ -127,7 +127,7 @@ func (j *JSONBodyValidator) Validate(body any) []string {
 			switch tag {
 			case "required":
 				errorMessages = append(errorMessages, fmt.Sprintf("%s is required", field))
-			case "uuidv4":
+			case "uuid4":
 				errorMessages = append(errorMessages, fmt.Sprintf("%s must be uuidv4", field))
 			case "string":
 				errorMessages = append(errorMessages, fmt.Sprintf("%s must be string", field))

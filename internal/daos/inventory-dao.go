@@ -68,6 +68,6 @@ func (m *InventoryDAO) ExistsById(id uuid.UUID) (bool, error) {
 }
 
 func (p *InventoryDAO) DeletAll() error {
-	_, err := p.pgxPool.Exec(context.Background(), "DELETE FROM inventories")
+	_, err := p.pgxPool.Exec(context.Background(), "TRUNCATE TABLE inventories CASCADE")
 	return err
 }

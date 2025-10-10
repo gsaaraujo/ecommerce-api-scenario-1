@@ -104,14 +104,17 @@ func (h *HttpServer) Ready() {
 	}
 
 	customerDAO := daos.NewCustomerDAO(pgxPool)
+	inventoryDAO := daos.NewInventoryDAO(pgxPool)
 
 	loginUsecase := usecases.NewLoginUsecase(customerDAO, awsSecretsGateway)
 	registerUsecase := usecases.NewRegisterUsecase(customerDAO)
 	addProductUsecase := usecases.NewAddProductUsecase(pgxPool)
+	addStockUsecase := usecases.NewAddStockUsecase(pgxPool, inventoryDAO)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)
 	registerHandler := handlers.NewRegisterHandler(jsonBodyValidator, registerUsecase)
 	addProductHandler := handlers.NewAddProductHandler(jsonBodyValidator, addProductUsecase)
+	addStockHandler := handlers.NewAddStockHandler(jsonBodyValidator, addStockUsecase)
 
 	h.echo.GET("/health", func(c echo.Context) error {
 		return c.NoContent(204)
@@ -124,6 +127,7 @@ func (h *HttpServer) Ready() {
 
 	echoJWTMiddleware := middlewares.NewEchoJWTMiddleware(accessTokenSigningKey)
 	v1.POST("/admin/add-product", addProductHandler.Handle, echoJWTMiddleware)
+	v1.POST("/admin/add-stock", addStockHandler.Handle, echoJWTMiddleware)
 
 	h.logger.Info("http server is now ready")
 }

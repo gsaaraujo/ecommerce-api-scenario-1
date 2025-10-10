@@ -32,10 +32,7 @@ func (a *AddProductSuite) SetupSuite() {
 }
 
 func (a *AddProductSuite) SetupTest() {
-	err := a.inventoryDAO.DeletAll()
-	a.Require().NoError(err)
-
-	err = a.productDAO.DeletAll()
+	err := a.productDAO.DeletAll()
 	a.Require().NoError(err)
 }
 

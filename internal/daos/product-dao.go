@@ -70,6 +70,6 @@ func (p *ProductDAO) FindOneByName(name string) (*ProductSchema, error) {
 }
 
 func (p *ProductDAO) DeletAll() error {
-	_, err := p.pgxPool.Exec(context.Background(), "DELETE FROM products")
+	_, err := p.pgxPool.Exec(context.Background(), "TRUNCATE TABLE products CASCADE")
 	return err
 }
