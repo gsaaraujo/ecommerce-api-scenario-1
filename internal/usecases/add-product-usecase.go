@@ -38,8 +38,8 @@ func (a *AddProductUsecase) Execute(input AddProductUsecaseInput) error {
 	}()
 
 	productId := uuid.New()
-	_, err = tx.Exec(context.Background(), "INSERT INTO products (id, name, description, price, created_at) VALUES ($1, $2, $3, $4, $5)",
-		productId, input.Name, input.Description, input.Price, time.Now().UTC())
+	_, err = tx.Exec(context.Background(), "INSERT INTO products (id, status, name, description, price, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+		productId, "unpublished", input.Name, input.Description, input.Price, time.Now().UTC())
 	if err != nil {
 		return err
 	}

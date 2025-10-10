@@ -37,7 +37,8 @@ func (a *AddProductSuite) SetupTest() {
 }
 
 func (a *AddProductSuite) Test1() {
-	a.Run("when adding product, then returns 204 and a new product and inventory are created and inventory has stock equals zero", func() {
+	a.Run(`when adding product, then returns 204 
+	and a new product and inventory are created and inventory has stock equals zero and product has status 'unpublished'`, func() {
 		request, err := http.NewRequest("POST", a.testEnvironment.BaseUrl()+"/v1/admin/add-product", strings.NewReader(`
 			{
 				"name": "ErgoClick Pro Wireless Mouse",
@@ -63,6 +64,7 @@ func (a *AddProductSuite) Test1() {
 		a.Require().NoError(err)
 		a.Require().NotNil(productSchema)
 		a.Require().True(utils.IsValidUUID(productSchema.Id.String()))
+		a.Require().Equal("unpublished", productSchema.Status)
 		a.Require().Equal("ErgoClick Pro Wireless Mouse", productSchema.Name)
 		a.Require().Equal("Ergonomically designed wireless optical mouse ...", *productSchema.Description)
 		a.Require().Equal(int64(2999), productSchema.Price)

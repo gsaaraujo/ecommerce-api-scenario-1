@@ -11,6 +11,7 @@ import (
 
 type ProductSchema struct {
 	Id          uuid.UUID
+	Status      string
 	Name        string
 	Description *string
 	Price       int64
@@ -27,8 +28,8 @@ func NewProductDAO(pgxPool *pgxpool.Pool) ProductDAO {
 
 func (p *ProductDAO) Create(productSchema ProductSchema) error {
 	_, err := p.pgxPool.Exec(context.Background(),
-		"INSERT INTO products (id, name, description, price, created_at) VALUES ($1, $2, $3, $4, $5)",
-		productSchema.Id, productSchema.Name, productSchema.Description, productSchema.Price, productSchema.CreatedAt)
+		"INSERT INTO products (id, status, name, description, price, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+		productSchema.Id, productSchema.Status, productSchema.Name, productSchema.Description, productSchema.Price, productSchema.CreatedAt)
 
 	return err
 }
@@ -37,8 +38,8 @@ func (p *ProductDAO) FindOneById(id uuid.UUID) (*ProductSchema, error) {
 	var productSchema ProductSchema
 
 	err := p.pgxPool.QueryRow(context.Background(),
-		"SELECT id, name, description, price, created_at FROM products WHERE id = $1", id).
-		Scan(&productSchema.Id, &productSchema.Name, &productSchema.Description, &productSchema.Price, &productSchema.CreatedAt)
+		"SELECT id, status, name, description, price, created_at FROM products WHERE id = $1", id).
+		Scan(&productSchema.Id, &productSchema.Status, &productSchema.Name, &productSchema.Description, &productSchema.Price, &productSchema.CreatedAt)
 
 	if err != nil && err == pgx.ErrNoRows {
 		return nil, nil
@@ -55,8 +56,8 @@ func (p *ProductDAO) FindOneByName(name string) (*ProductSchema, error) {
 	var productSchema ProductSchema
 
 	err := p.pgxPool.QueryRow(context.Background(),
-		"SELECT id, name, description, price, created_at FROM products WHERE name = $1", name).
-		Scan(&productSchema.Id, &productSchema.Name, &productSchema.Description, &productSchema.Price, &productSchema.CreatedAt)
+		"SELECT id, status, name, description, price, created_at FROM products WHERE name = $1", name).
+		Scan(&productSchema.Id, &productSchema.Status, &productSchema.Name, &productSchema.Description, &productSchema.Price, &productSchema.CreatedAt)
 
 	if err != nil && err == pgx.ErrNoRows {
 		return nil, nil
