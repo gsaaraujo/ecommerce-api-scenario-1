@@ -35,7 +35,7 @@ func (r *RegisterSuite) SetupTest() {
 }
 
 func (r *RegisterSuite) Test1() {
-	r.Run("given that the customer is not already registered, when registering, then returns 204", func() {
+	r.Run("given that the customer is not already registered, when registering, then returns 204 and a new customer is created", func() {
 		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/register", "application/json", strings.NewReader(`
 			{
 				"name": "John Doe",

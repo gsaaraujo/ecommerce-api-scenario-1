@@ -12,6 +12,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type JwtAccessTokenClaims struct {
+	Roles []string `json:"roles"`
+	jwt.RegisteredClaims
+}
+
 type LoginUsecaseInput struct {
 	Email    string
 	Password string
@@ -51,10 +56,13 @@ func (l *LoginUsecase) Execute(input LoginUsecaseInput) (LoginUsecaseOutput, err
 		return LoginUsecaseOutput{}, errors.New("email or password is incorrect")
 	}
 
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Subject:   customerSchema.Id.String(),
-		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(30 * time.Minute)),
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, JwtAccessTokenClaims{
+		Roles: []string{"customer"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   customerSchema.Id.String(),
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(30 * time.Minute)),
+		},
 	})
 
 	accessTokenSigningKey, err := l.awsSecretsGateway.Get("ACCESS_TOKEN_SIGNING_KEY")

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
 	testhelpers "github.com/gsaaraujo/ecommerce-api-scenario-1/internal/test_helpers"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/usecases"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/stretchr/testify/suite"
 )
@@ -54,28 +55,23 @@ func (l *LoginSuite) Test1() {
 		l.Require().NoError(err)
 
 		l.Equal(200, response.StatusCode)
-		responseBody, err := utils.ParseJSONBody[map[string]map[string]any](response.Body)
+		body, err := utils.ParseJSONBody[map[string]map[string]any](response.Body)
 		l.Require().NoError(err)
-		customerId := responseBody["data"]["customerId"].(string)
-		accessToken := responseBody["data"]["accessToken"].(string)
+		customerId := body["data"]["customerId"].(string)
+		accessToken := body["data"]["accessToken"].(string)
 		l.True(utils.IsValidUUID(customerId))
-		l.NotEqual("", accessToken)
+		l.NotEmpty(accessToken)
 
-		token, err := jwt.Parse(accessToken, func(token *jwt.Token) (any, error) {
+		token, err := jwt.ParseWithClaims(accessToken, &usecases.JwtAccessTokenClaims{}, func(token *jwt.Token) (any, error) {
 			return []byte("81c4a8d5b2554de4ba736e93255ba633"), nil
 		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 		l.Require().NoError(err)
 
-		subject, err := token.Claims.GetSubject()
-		l.Require().NoError(err)
-		issuedAt, err := token.Claims.GetIssuedAt()
-		l.Require().NoError(err)
-		expirationTime, err := token.Claims.GetExpirationTime()
-		l.Require().NoError(err)
-
-		l.Equal("f59207c8-e837-4159-b67d-78c716510747", subject)
-		l.WithinDuration(time.Now().UTC(), issuedAt.Time, 5*time.Second)
-		l.WithinDuration(time.Now().UTC().Add(30*time.Minute), expirationTime.Time, 5*time.Second)
+		claims := token.Claims.(*usecases.JwtAccessTokenClaims)
+		l.Require().Equal("f59207c8-e837-4159-b67d-78c716510747", claims.Subject)
+		l.Require().Equal([]string{"customer"}, claims.Roles)
+		l.Require().WithinDuration(time.Now().UTC(), claims.IssuedAt.Time, 5*time.Second)
+		l.Require().WithinDuration(time.Now().UTC().Add(30*time.Minute), claims.ExpiresAt.Time, 5*time.Second)
 	})
 }
 
@@ -263,6 +259,7 @@ func (l *LoginSuite) Test5() {
 
 			body, err := io.ReadAll(response.Body)
 			l.Require().NoError(err)
+
 			l.Equal(400, response.StatusCode)
 			l.JSONEq(fmt.Sprintf(`
 				{

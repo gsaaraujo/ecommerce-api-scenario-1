@@ -62,6 +62,12 @@ func (h *HttpServer) Ready() {
 		os.Exit(1)
 	}
 
+	accessTokenSigningKey, err := awsSecretsGateway.Get("ACCESS_TOKEN_SIGNING_KEY")
+	if err != nil {
+		h.logger.Error(err.Error())
+		os.Exit(1)
+	}
+
 	// rabbitmqUrl, err := awsSecretsGateway.Get("RABBITMQ_URL")
 	// if err != nil {
 	// 	h.logger.Error(err.Error())
@@ -101,17 +107,23 @@ func (h *HttpServer) Ready() {
 
 	loginUsecase := usecases.NewLoginUsecase(customerDAO, awsSecretsGateway)
 	registerUsecase := usecases.NewRegisterUsecase(customerDAO)
+	addProductUsecase := usecases.NewAddProductUsecase(pgxPool)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)
 	registerHandler := handlers.NewRegisterHandler(jsonBodyValidator, registerUsecase)
+	addProductHandler := handlers.NewAddProductHandler(jsonBodyValidator, addProductUsecase)
 
-	v1 := h.echo.Group("/v1")
 	h.echo.GET("/health", func(c echo.Context) error {
 		return c.NoContent(204)
 	})
 
+	v1 := h.echo.Group("/v1")
+
 	v1.POST("/login", loginHandler.Handle)
 	v1.POST("/register", registerHandler.Handle)
+
+	echoJWTMiddleware := middlewares.NewEchoJWTMiddleware(accessTokenSigningKey)
+	v1.POST("/admin/add-product", addProductHandler.Handle, echoJWTMiddleware)
 
 	h.logger.Info("http server is now ready")
 }

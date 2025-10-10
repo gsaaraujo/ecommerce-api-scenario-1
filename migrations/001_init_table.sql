@@ -5,3 +5,19 @@ CREATE TABLE IF NOT EXISTS customers (
   password VARCHAR(255) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS products (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  price BIGINT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS inventories (
+  id UUID PRIMARY KEY,
+  product_id UUID NOT NULL,
+  stock_quantity INT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);

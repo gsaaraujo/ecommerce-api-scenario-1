@@ -52,6 +52,6 @@ func (c *CustomerDAO) FindOneByEmail(email string) (*CustomerSchema, error) {
 }
 
 func (c *CustomerDAO) DeletAll() error {
-	_, err := c.pgxPool.Exec(context.Background(), "TRUNCATE TABLE customers")
+	_, err := c.pgxPool.Exec(context.Background(), "DELETE FROM customers")
 	return err
 }
