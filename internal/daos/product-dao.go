@@ -70,6 +70,23 @@ func (p *ProductDAO) FindOneByName(name string) (*ProductSchema, error) {
 	return &productSchema, nil
 }
 
+func (p *ProductDAO) ExistsById(id uuid.UUID) (bool, error) {
+	var productSchema ProductSchema
+
+	err := p.pgxPool.QueryRow(context.Background(), "SELECT id FROM products WHERE id = $1", id).
+		Scan(&productSchema.Id)
+
+	if err != nil && err == pgx.ErrNoRows {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (p *ProductDAO) DeletAll() error {
 	_, err := p.pgxPool.Exec(context.Background(), "TRUNCATE TABLE products CASCADE")
 	return err
