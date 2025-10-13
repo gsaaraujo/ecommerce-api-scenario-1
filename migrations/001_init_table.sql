@@ -22,3 +22,20 @@ CREATE TABLE IF NOT EXISTS inventories (
   created_at TIMESTAMPTZ NOT NULL,
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
+
+CREATE TABLE IF NOT EXISTS carts (
+  id UUID PRIMARY KEY,
+  customer_id UUID UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+
+CREATE TABLE IF NOT EXISTS cart_items (
+  id UUID PRIMARY KEY,
+  cart_id UUID NOT NULL,
+  product_id UUID NOT NULL,
+  quantity INT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  FOREIGN KEY (cart_id) REFERENCES carts(id),
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);

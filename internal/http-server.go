@@ -105,6 +105,8 @@ func (h *HttpServer) Ready() {
 
 	customerDAO := daos.NewCustomerDAO(pgxPool)
 	inventoryDAO := daos.NewInventoryDAO(pgxPool)
+	cartDAO := daos.NewCartDAO(pgxPool)
+	cartItemDAO := daos.NewCartItemDAO(pgxPool)
 	productDAO := daos.NewProductDAO(pgxPool)
 
 	loginUsecase := usecases.NewLoginUsecase(customerDAO, awsSecretsGateway)
@@ -112,12 +114,14 @@ func (h *HttpServer) Ready() {
 	addProductUsecase := usecases.NewAddProductUsecase(pgxPool)
 	addStockUsecase := usecases.NewAddStockUsecase(pgxPool, inventoryDAO)
 	publishProductUsecase := usecases.NewPublishProductUsecase(pgxPool, productDAO)
+	addProductToCartUsecase := usecases.NewAddProductToCartUsecase(pgxPool, cartDAO, cartItemDAO, productDAO)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)
 	registerHandler := handlers.NewRegisterHandler(jsonBodyValidator, registerUsecase)
 	addProductHandler := handlers.NewAddProductHandler(jsonBodyValidator, addProductUsecase)
 	addStockHandler := handlers.NewAddStockHandler(jsonBodyValidator, addStockUsecase)
 	publishProductHandler := handlers.NewPublishProductHandler(jsonBodyValidator, publishProductUsecase)
+	addProductToCartHandler := handlers.NewAddProductToCartHandler(jsonBodyValidator, addProductToCartUsecase)
 
 	h.echo.GET("/health", func(c echo.Context) error {
 		return c.NoContent(204)
@@ -132,6 +136,7 @@ func (h *HttpServer) Ready() {
 	v1.POST("/admin/add-product", addProductHandler.Handle, echoJWTMiddleware)
 	v1.POST("/admin/add-stock", addStockHandler.Handle, echoJWTMiddleware)
 	v1.POST("/admin/publish-product", publishProductHandler.Handle, echoJWTMiddleware)
+	v1.POST("/add-product-to-cart", addProductToCartHandler.Handle, echoJWTMiddleware)
 
 	h.logger.Info("http server is now ready")
 }

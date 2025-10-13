@@ -10,6 +10,7 @@ import (
 func NewEchoJWTMiddleware(accessTokenSigningKey string) echo.MiddlewareFunc {
 	return echojwt.WithConfig(echojwt.Config{
 		SigningKey: []byte(accessTokenSigningKey),
+		ContextKey: "customer",
 		NewClaimsFunc: func(c echo.Context) jwt.Claims {
 			return new(usecases.JwtAccessTokenClaims)
 		},
