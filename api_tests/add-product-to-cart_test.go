@@ -1,6 +1,7 @@
 package apitests_test
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -49,7 +50,7 @@ func (a *AddProductToCartSuite) SetupTest() {
 }
 
 func (a *AddProductToCartSuite) Test1() {
-	a.Run("given that there are products, when adding product to cart, then returns 204 and creates/updates cart", func() {
+	a.Run("given that the product exists, when adding product to cart, then returns 204 and creates/updates cart", func() {
 		err := a.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -106,7 +107,7 @@ func (a *AddProductToCartSuite) Test1() {
 }
 
 func (a *AddProductToCartSuite) Test2() {
-	a.Run("given that there are products, when adding product to cart multiple times, then returns 204 and creates/updates cart", func() {
+	a.Run("given that the products exists, when adding product to cart multiple times, then returns 204 and creates/updates cart", func() {
 		err := a.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -280,6 +281,131 @@ func (a *AddProductToCartSuite) Test4() {
 				"message": "product not found"
 			}
 		`, string(body))
+	})
+}
+
+func (a *AddProductToCartSuite) Test5() {
+	a.Run("when adding product to cart and body is invalid, then returns 400", func() {
+		templates := []map[string]string{
+			{
+				"body": `{}`,
+				"error": `[
+					"productId is required",
+					"quantity is required"
+				]`,
+			},
+			{
+				"body": `{
+					"productId": null,
+					"quantity": null
+				}`,
+				"error": `[
+					"productId is required",
+					"quantity is required"
+				]`,
+			},
+			{
+				"body": `{
+					"productId": "",
+					"quantity": ""
+				}`,
+				"error": `[
+					"productId must be uuidv4",
+					"quantity must be integer"
+				]`,
+			},
+			{
+				"body": `{
+					"productId": " ",
+					"quantity": " "
+				}`,
+				"error": `[
+					"productId must be uuidv4",
+					"quantity must be integer"
+				]`,
+			},
+			{
+				"body": `{
+					"productId": 1,
+					"quantity": 1
+				}`,
+				"error": `[
+					"productId must be uuidv4"
+				]`,
+			},
+			{
+				"body": `{
+					"productId": 1.5,
+					"quantity": 1.5
+				}`,
+				"error": `[
+					"productId must be uuidv4",
+					"quantity must be integer"
+				]`,
+			},
+			{
+				"body": `{
+					"productId": -1,
+					"quantity": -1
+				}`,
+				"error": `[
+					"productId must be uuidv4",
+					"quantity must be positive"
+				]`,
+			},
+			{
+				"body": `{
+					"productId": true,
+					"quantity": false
+				}`,
+				"error": `[
+					"productId must be uuidv4",
+					"quantity must be integer"
+				]`,
+			},
+			{
+				"body": `{
+					"productId": {},
+					"quantity": {}
+				}`,
+				"error": `[
+					"productId must be uuidv4",
+					"quantity must be integer"
+				]`,
+			},
+			{
+				"body": `{
+					"productId": [],
+					"quantity": []
+				}`,
+				"error": `[
+					"productId must be uuidv4",
+					"quantity must be integer"
+				]`,
+			},
+		}
+
+		for _, template := range templates {
+			request, err := http.NewRequest("POST", a.testEnvironment.BaseUrl()+"/v1/add-product-to-cart", strings.NewReader(template["body"]))
+			a.Require().NoError(err)
+			accessToken, err := testhelpers.TestGenerateAccessToken(uuid.New())
+			a.Require().NoError(err)
+			request.Header.Add("Content-Type", "application/json")
+			request.Header.Add("Authorization", "Bearer "+accessToken)
+
+			response, err := a.testEnvironment.Client().Do(request)
+			a.Require().NoError(err)
+
+			body, err := io.ReadAll(response.Body)
+			a.Require().NoError(err)
+
+			a.Equal(400, response.StatusCode)
+			a.JSONEq(fmt.Sprintf(`
+				{
+					"message": %s
+				}
+			`, template["error"]), string(body))
+		}
 	})
 }
 
