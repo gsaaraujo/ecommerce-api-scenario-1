@@ -8,25 +8,25 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type IncreaseProductQuantityInCartHandlerInput struct {
+type DecreaseProductQuantityInCartHandlerInput struct {
 	ProductId any `validate:"required,uuid4"`
 	Quantity  any `validate:"required,integer,positive"`
 }
 
-type IncreaseProductQuantityInCartHandler struct {
+type DecreaseProductQuantityInCartHandler struct {
 	jsonBodyValidator                    webhttp.JSONBodyValidator
-	increaseProductQuantityInCartUsecase usecases.IncreaseProductQuantityInCartUsecase
+	decreaseProductQuantityInCartUsecase usecases.DecreaseProductQuantityInCartUsecase
 }
 
-func NewIncreaseProductQuantityInCartHandler(
+func NewDecreaseProductQuantityInCartHandler(
 	jsonBodyValidation webhttp.JSONBodyValidator,
-	increaseProductQuantityInCartUsecase usecases.IncreaseProductQuantityInCartUsecase,
-) IncreaseProductQuantityInCartHandler {
-	return IncreaseProductQuantityInCartHandler{jsonBodyValidation, increaseProductQuantityInCartUsecase}
+	decreaseProductQuantityInCartUsecase usecases.DecreaseProductQuantityInCartUsecase,
+) DecreaseProductQuantityInCartHandler {
+	return DecreaseProductQuantityInCartHandler{jsonBodyValidation, decreaseProductQuantityInCartUsecase}
 }
 
-func (r *IncreaseProductQuantityInCartHandler) Handle(c echo.Context) error {
-	var input IncreaseProductQuantityInCartHandlerInput
+func (r *DecreaseProductQuantityInCartHandler) Handle(c echo.Context) error {
+	var input DecreaseProductQuantityInCartHandlerInput
 
 	if err := c.Bind(&input); err != nil {
 		return c.NoContent(415)
@@ -39,7 +39,7 @@ func (r *IncreaseProductQuantityInCartHandler) Handle(c echo.Context) error {
 	token := c.Get("customer").(*jwt.Token)
 	claims := token.Claims.(*usecases.JwtAccessTokenClaims)
 
-	err := r.increaseProductQuantityInCartUsecase.Execute(usecases.IncreaseProductQuantityInCartUsecaseInput{
+	err := r.decreaseProductQuantityInCartUsecase.Execute(usecases.DecreaseProductQuantityInCartUsecaseInput{
 		CustomerId: uuid.MustParse(claims.Subject),
 		ProductId:  uuid.MustParse(input.ProductId.(string)),
 		Quantity:   int32(input.Quantity.(float64)),
@@ -56,7 +56,7 @@ func (r *IncreaseProductQuantityInCartHandler) Handle(c echo.Context) error {
 		return c.JSON(409, map[string]any{"message": err.Error()})
 	}
 
-	if err.Error() == "you cannot increase the quantity of product with a value equal to zero" {
+	if err.Error() == "you cannot decrease the quantity of product with a value equal to zero" {
 		return c.JSON(409, map[string]any{"message": err.Error()})
 	}
 

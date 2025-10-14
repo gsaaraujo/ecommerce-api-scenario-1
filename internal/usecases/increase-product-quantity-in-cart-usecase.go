@@ -26,6 +26,10 @@ func NewIncreaseProductQuantityInCartUsecase(pgxPool *pgxpool.Pool, cartDAO daos
 }
 
 func (i *IncreaseProductQuantityInCartUsecase) Execute(input IncreaseProductQuantityInCartUsecaseInput) error {
+	if input.Quantity == 0 {
+		return errors.New("you cannot increase the quantity of product with a value equal to zero")
+	}
+
 	cartSchema, err := i.cartDAO.FindOneByCustomerId(input.CustomerId)
 	if err != nil {
 		return err

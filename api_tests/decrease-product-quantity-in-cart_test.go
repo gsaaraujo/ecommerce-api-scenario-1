@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type IncreaseProductQuantityInCartSuite struct {
+type DecreaseProductQuantityInCartSuite struct {
 	suite.Suite
 	productDAO      daos.ProductDAO
 	cartDAO         daos.CartDAO
@@ -24,7 +24,7 @@ type IncreaseProductQuantityInCartSuite struct {
 	testEnvironment *testhelpers.TestEnvironment
 }
 
-func (i *IncreaseProductQuantityInCartSuite) SetupSuite() {
+func (i *DecreaseProductQuantityInCartSuite) SetupSuite() {
 	i.testEnvironment = testhelpers.NewTestEnvironment()
 	err := i.testEnvironment.Start()
 	i.Require().NoError(err)
@@ -35,7 +35,7 @@ func (i *IncreaseProductQuantityInCartSuite) SetupSuite() {
 	i.customerDAO = daos.NewCustomerDAO(i.testEnvironment.PgxPool())
 }
 
-func (i *IncreaseProductQuantityInCartSuite) SetupTest() {
+func (i *DecreaseProductQuantityInCartSuite) SetupTest() {
 	err := i.customerDAO.DeletAll()
 	i.Require().NoError(err)
 
@@ -49,8 +49,8 @@ func (i *IncreaseProductQuantityInCartSuite) SetupTest() {
 	i.Require().NoError(err)
 }
 
-func (i *IncreaseProductQuantityInCartSuite) Test1() {
-	i.Run("given that the product is in cart, when increasing product quantity, then returns 204 and updates cart", func() {
+func (i *DecreaseProductQuantityInCartSuite) Test1() {
+	i.Run("given that the product is in cart, when decreasing product quantity, then returns 204 and updates cart", func() {
 		err := i.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -82,10 +82,10 @@ func (i *IncreaseProductQuantityInCartSuite) Test1() {
 		})
 		i.Require().NoError(err)
 
-		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/increase-product-quantity-in-cart", strings.NewReader(`
+		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/decrease-product-quantity-in-cart", strings.NewReader(`
 			{
 				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a",
-				"quantity": 6
+				"quantity": 2
 			}
 		`))
 		i.Require().NoError(err)
@@ -104,12 +104,131 @@ func (i *IncreaseProductQuantityInCartSuite) Test1() {
 
 		cartItemSchema, err := i.cartItemDAO.FindAllByCartId(uuid.MustParse("bb8357b2-b978-4675-9521-ef2da0bd1747"))
 		i.Require().NoError(err)
-		i.Require().Equal(int32(14), cartItemSchema[0].Quantity)
+		i.Require().Equal(int32(6), cartItemSchema[0].Quantity)
 	})
 }
 
-func (i *IncreaseProductQuantityInCartSuite) Test2() {
-	i.Run("given that the cart does not exist, when increasing product quantity, then returns 409", func() {
+func (i *DecreaseProductQuantityInCartSuite) Test2() {
+	i.Run("given that the product is in cart, when decreasing product quantity and it reaches zero, then returns 204 and deletes item from cart", func() {
+		err := i.customerDAO.Create(daos.CustomerSchema{
+			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
+			Name:      "John Doe",
+			Email:     "john.doe@gmail.com",
+			Password:  "$2a$10$asLIHej6kxd3Fsdc76QHieBugwCGvsYJeLiZmP1K7/t1GbIbUy.pK",
+			CreatedAt: time.Now().UTC(),
+		})
+		i.Require().NoError(err)
+		err = i.productDAO.Create(daos.ProductSchema{
+			Id:          uuid.MustParse("c0981e5b-9cb7-4623-9713-55db0317dc1a"),
+			Name:        "ErgoClick Pro Wireless Mouse",
+			Description: utils.NewPointer("Ergonomically designed wireless optical mouse ..."),
+			Price:       2999,
+			CreatedAt:   time.Now().UTC(),
+		})
+		i.Require().NoError(err)
+		err = i.cartDAO.Create(daos.CartSchema{
+			Id:         uuid.MustParse("bb8357b2-b978-4675-9521-ef2da0bd1747"),
+			CustomerId: uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
+			CreatedAt:  time.Now().UTC(),
+		})
+		i.Require().NoError(err)
+		err = i.cartItemDAO.Create(daos.CartItemSchema{
+			Id:        uuid.MustParse("b999870f-f969-4d24-8955-499dbf3c689e"),
+			CartId:    uuid.MustParse("bb8357b2-b978-4675-9521-ef2da0bd1747"),
+			ProductId: uuid.MustParse("c0981e5b-9cb7-4623-9713-55db0317dc1a"),
+			Quantity:  8,
+			CreatedAt: time.Now().UTC(),
+		})
+		i.Require().NoError(err)
+
+		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/decrease-product-quantity-in-cart", strings.NewReader(`
+			{
+				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a",
+				"quantity": 8
+			}
+		`))
+		i.Require().NoError(err)
+		accessToken, err := testhelpers.TestGenerateAccessToken(uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"))
+		i.Require().NoError(err)
+		request.Header.Add("Content-Type", "application/json")
+		request.Header.Add("Authorization", "Bearer "+accessToken)
+
+		response, err := i.testEnvironment.Client().Do(request)
+		i.Require().NoError(err)
+
+		body, err := io.ReadAll(response.Body)
+		i.Require().NoError(err)
+		i.Equal(204, response.StatusCode)
+		i.Equal("", string(body))
+
+		cartItemSchema, err := i.cartItemDAO.FindAllByCartId(uuid.MustParse("bb8357b2-b978-4675-9521-ef2da0bd1747"))
+		i.Require().NoError(err)
+		i.Require().Empty(cartItemSchema)
+	})
+}
+
+func (i *DecreaseProductQuantityInCartSuite) Test3() {
+	i.Run(`given that the product is in cart, when decreasing product quantity and quantity is higher than current item quantity, 
+	then returns 204 and deletes item from cart`, func() {
+		err := i.customerDAO.Create(daos.CustomerSchema{
+			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
+			Name:      "John Doe",
+			Email:     "john.doe@gmail.com",
+			Password:  "$2a$10$asLIHej6kxd3Fsdc76QHieBugwCGvsYJeLiZmP1K7/t1GbIbUy.pK",
+			CreatedAt: time.Now().UTC(),
+		})
+		i.Require().NoError(err)
+		err = i.productDAO.Create(daos.ProductSchema{
+			Id:          uuid.MustParse("c0981e5b-9cb7-4623-9713-55db0317dc1a"),
+			Name:        "ErgoClick Pro Wireless Mouse",
+			Description: utils.NewPointer("Ergonomically designed wireless optical mouse ..."),
+			Price:       2999,
+			CreatedAt:   time.Now().UTC(),
+		})
+		i.Require().NoError(err)
+		err = i.cartDAO.Create(daos.CartSchema{
+			Id:         uuid.MustParse("bb8357b2-b978-4675-9521-ef2da0bd1747"),
+			CustomerId: uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
+			CreatedAt:  time.Now().UTC(),
+		})
+		i.Require().NoError(err)
+		err = i.cartItemDAO.Create(daos.CartItemSchema{
+			Id:        uuid.MustParse("b999870f-f969-4d24-8955-499dbf3c689e"),
+			CartId:    uuid.MustParse("bb8357b2-b978-4675-9521-ef2da0bd1747"),
+			ProductId: uuid.MustParse("c0981e5b-9cb7-4623-9713-55db0317dc1a"),
+			Quantity:  2,
+			CreatedAt: time.Now().UTC(),
+		})
+		i.Require().NoError(err)
+
+		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/decrease-product-quantity-in-cart", strings.NewReader(`
+			{
+				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a",
+				"quantity": 8
+			}
+		`))
+		i.Require().NoError(err)
+		accessToken, err := testhelpers.TestGenerateAccessToken(uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"))
+		i.Require().NoError(err)
+		request.Header.Add("Content-Type", "application/json")
+		request.Header.Add("Authorization", "Bearer "+accessToken)
+
+		response, err := i.testEnvironment.Client().Do(request)
+		i.Require().NoError(err)
+
+		body, err := io.ReadAll(response.Body)
+		i.Require().NoError(err)
+		i.Equal(204, response.StatusCode)
+		i.Equal("", string(body))
+
+		cartItemSchema, err := i.cartItemDAO.FindAllByCartId(uuid.MustParse("bb8357b2-b978-4675-9521-ef2da0bd1747"))
+		i.Require().NoError(err)
+		i.Require().Empty(cartItemSchema)
+	})
+}
+
+func (i *DecreaseProductQuantityInCartSuite) Test4() {
+	i.Run("given that the cart does not exist, when decreasing product quantity, then returns 409", func() {
 		err := i.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -119,10 +238,10 @@ func (i *IncreaseProductQuantityInCartSuite) Test2() {
 		})
 		i.Require().NoError(err)
 
-		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/increase-product-quantity-in-cart", strings.NewReader(`
+		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/decrease-product-quantity-in-cart", strings.NewReader(`
 			{
 				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a",
-				"quantity": 6
+				"quantity": 2
 			}
 		`))
 		i.Require().NoError(err)
@@ -145,8 +264,8 @@ func (i *IncreaseProductQuantityInCartSuite) Test2() {
 	})
 }
 
-func (i *IncreaseProductQuantityInCartSuite) Test3() {
-	i.Run("given that the product is not in cart, when increasing product quantity, then returns 409", func() {
+func (i *DecreaseProductQuantityInCartSuite) Test5() {
+	i.Run("given that the product is not in cart, when decreasing product quantity, then returns 409", func() {
 		err := i.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -170,10 +289,10 @@ func (i *IncreaseProductQuantityInCartSuite) Test3() {
 		})
 		i.Require().NoError(err)
 
-		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/increase-product-quantity-in-cart", strings.NewReader(`
+		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/decrease-product-quantity-in-cart", strings.NewReader(`
 			{
 				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a",
-				"quantity": 6
+				"quantity": 2
 			}
 		`))
 		i.Require().NoError(err)
@@ -196,8 +315,8 @@ func (i *IncreaseProductQuantityInCartSuite) Test3() {
 	})
 }
 
-func (i *IncreaseProductQuantityInCartSuite) Test4() {
-	i.Run("when increasing product quantity and quantity is zero, then returns 409", func() {
+func (i *DecreaseProductQuantityInCartSuite) Test6() {
+	i.Run("when decreasing product quantity and quantity is zero, then returns 409", func() {
 		err := i.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -207,7 +326,7 @@ func (i *IncreaseProductQuantityInCartSuite) Test4() {
 		})
 		i.Require().NoError(err)
 
-		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/increase-product-quantity-in-cart", strings.NewReader(`
+		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/decrease-product-quantity-in-cart", strings.NewReader(`
 			{
 				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a",
 				"quantity": 0
@@ -227,14 +346,14 @@ func (i *IncreaseProductQuantityInCartSuite) Test4() {
 		i.Equal(409, response.StatusCode)
 		i.JSONEq(`
 			{
-				"message": "you cannot increase the quantity of product with a value equal to zero"
+				"message": "you cannot decrease the quantity of product with a value equal to zero"
 			}
 		`, string(body))
 	})
 }
 
-func (i *IncreaseProductQuantityInCartSuite) Test5() {
-	i.Run("when increasing product quantity and body is invalid, then returns 400", func() {
+func (i *DecreaseProductQuantityInCartSuite) Test7() {
+	i.Run("when decreasing product quantity and body is invalid, then returns 400", func() {
 		templates := []map[string]string{
 			{
 				"body": `{}`,
@@ -335,7 +454,7 @@ func (i *IncreaseProductQuantityInCartSuite) Test5() {
 		}
 
 		for _, template := range templates {
-			request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/increase-product-quantity-in-cart", strings.NewReader(template["body"]))
+			request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/decrease-product-quantity-in-cart", strings.NewReader(template["body"]))
 			i.Require().NoError(err)
 			accessToken, err := testhelpers.TestGenerateAccessToken(uuid.New())
 			i.Require().NoError(err)
@@ -358,6 +477,6 @@ func (i *IncreaseProductQuantityInCartSuite) Test5() {
 	})
 }
 
-func TestIncreaseProductQuantityInCartSuite(t *testing.T) {
-	suite.Run(t, new(IncreaseProductQuantityInCartSuite))
+func TestDecreaseProductQuantityInCartSuite(t *testing.T) {
+	suite.Run(t, new(DecreaseProductQuantityInCartSuite))
 }
