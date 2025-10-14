@@ -116,6 +116,7 @@ func (h *HttpServer) Ready() {
 	publishProductUsecase := usecases.NewPublishProductUsecase(pgxPool, productDAO)
 	addProductToCartUsecase := usecases.NewAddProductToCartUsecase(pgxPool, cartDAO, cartItemDAO, productDAO)
 	removeProductFromCartUsecase := usecases.NewRemoveProductFromCartUsecase(pgxPool, cartDAO, cartItemDAO)
+	increaseProductQuantityInCartUsecase := usecases.NewIncreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)
 	registerHandler := handlers.NewRegisterHandler(jsonBodyValidator, registerUsecase)
@@ -124,6 +125,7 @@ func (h *HttpServer) Ready() {
 	publishProductHandler := handlers.NewPublishProductHandler(jsonBodyValidator, publishProductUsecase)
 	addProductToCartHandler := handlers.NewAddProductToCartHandler(jsonBodyValidator, addProductToCartUsecase)
 	removeProductFromCartHandler := handlers.NewRemoveProductFromCartHandler(jsonBodyValidator, removeProductFromCartUsecase)
+	increaseProductQuantityInCartHandler := handlers.NewIncreaseProductQuantityInCartHandler(jsonBodyValidator, increaseProductQuantityInCartUsecase)
 
 	h.echo.GET("/health", func(c echo.Context) error {
 		return c.NoContent(204)
@@ -140,6 +142,7 @@ func (h *HttpServer) Ready() {
 	v1.POST("/admin/publish-product", publishProductHandler.Handle, echoJWTMiddleware)
 	v1.POST("/add-product-to-cart", addProductToCartHandler.Handle, echoJWTMiddleware)
 	v1.POST("/remove-product-from-cart", removeProductFromCartHandler.Handle, echoJWTMiddleware)
+	v1.POST("/increase-product-quantity-in-cart", increaseProductQuantityInCartHandler.Handle, echoJWTMiddleware)
 
 	h.logger.Info("http server is now ready")
 }
