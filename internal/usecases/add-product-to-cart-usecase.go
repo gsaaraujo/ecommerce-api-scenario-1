@@ -73,32 +73,4 @@ func (a *AddProductToCartUsecase) Execute(input AddProductToCartUsecaseInput) er
 	_, err = a.pgxPool.Exec(context.Background(), "INSERT INTO cart_items (id, cart_id, product_id, quantity, created_at) VALUES ($1, $2, $3, $4, $5)",
 		uuid.New(), cartId, input.ProductId, input.Quantity, time.Now().UTC())
 	return err
-
-	// var cart *entities.Cart
-
-	// cart, err = a.cartRepository.FindOneByCustomerId(input.CustomerId)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if cart == nil {
-	// 	cart = utils.NewPointer(entities.NewCart(input.CustomerId))
-
-	// 	err = cart.AddItem(productSchema.Id, input.Quantity, productSchema.Price)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	err = a.cartRepository.Create(*cart)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-
-	// err = cart.AddItem(productSchema.Id, input.Quantity, productSchema.Price)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// return a.cartRepository.Update(*cart)
 }
