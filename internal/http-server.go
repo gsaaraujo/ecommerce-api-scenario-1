@@ -128,6 +128,7 @@ func (h *HttpServer) Ready() {
 	removeProductFromCartHandler := handlers.NewRemoveProductFromCartHandler(jsonBodyValidator, removeProductFromCartUsecase)
 	increaseProductQuantityInCartHandler := handlers.NewIncreaseProductQuantityInCartHandler(jsonBodyValidator, increaseProductQuantityInCartUsecase)
 	decreaseProductQuantityInCartHandler := handlers.NewDecreaseProductQuantityInCartHandler(jsonBodyValidator, decreaseProductQuantityInCartUsecase)
+	getCartHandler := handlers.NewGetCartHandler(pgxPool, cartDAO)
 
 	h.echo.GET("/health", func(c echo.Context) error {
 		return c.NoContent(204)
@@ -142,10 +143,13 @@ func (h *HttpServer) Ready() {
 	v1.POST("/admin/add-product", addProductHandler.Handle, echoJWTMiddleware)
 	v1.POST("/admin/add-stock", addStockHandler.Handle, echoJWTMiddleware)
 	v1.POST("/admin/publish-product", publishProductHandler.Handle, echoJWTMiddleware)
+
 	v1.POST("/add-product-to-cart", addProductToCartHandler.Handle, echoJWTMiddleware)
 	v1.POST("/remove-product-from-cart", removeProductFromCartHandler.Handle, echoJWTMiddleware)
 	v1.POST("/increase-product-quantity-in-cart", increaseProductQuantityInCartHandler.Handle, echoJWTMiddleware)
 	v1.POST("/decrease-product-quantity-in-cart", decreaseProductQuantityInCartHandler.Handle, echoJWTMiddleware)
+
+	v1.GET("/cart", getCartHandler.Handle, echoJWTMiddleware)
 
 	h.logger.Info("http server is now ready")
 }
