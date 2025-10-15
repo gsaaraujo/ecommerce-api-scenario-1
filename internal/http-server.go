@@ -110,7 +110,7 @@ func (h *HttpServer) Ready() {
 	productDAO := daos.NewProductDAO(pgxPool)
 
 	loginUsecase := usecases.NewLoginUsecase(customerDAO, awsSecretsGateway)
-	registerUsecase := usecases.NewRegisterUsecase(customerDAO)
+	signUpUsecase := usecases.NewSignUpUsecase(pgxPool, customerDAO)
 	addProductUsecase := usecases.NewAddProductUsecase(pgxPool)
 	addStockUsecase := usecases.NewAddStockUsecase(pgxPool, inventoryDAO)
 	publishProductUsecase := usecases.NewPublishProductUsecase(pgxPool, productDAO)
@@ -120,7 +120,7 @@ func (h *HttpServer) Ready() {
 	decreaseProductQuantityInCartUsecase := usecases.NewDecreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)
-	registerHandler := handlers.NewRegisterHandler(jsonBodyValidator, registerUsecase)
+	signUpHandler := handlers.NewSignUpHandler(jsonBodyValidator, signUpUsecase)
 	addProductHandler := handlers.NewAddProductHandler(jsonBodyValidator, addProductUsecase)
 	addStockHandler := handlers.NewAddStockHandler(jsonBodyValidator, addStockUsecase)
 	publishProductHandler := handlers.NewPublishProductHandler(jsonBodyValidator, publishProductUsecase)
@@ -137,7 +137,7 @@ func (h *HttpServer) Ready() {
 	v1 := h.echo.Group("/v1")
 
 	v1.POST("/login", loginHandler.Handle)
-	v1.POST("/register", registerHandler.Handle)
+	v1.POST("/sign-up", signUpHandler.Handle)
 
 	echoJWTMiddleware := middlewares.NewEchoJWTMiddleware(accessTokenSigningKey)
 	v1.POST("/admin/add-product", addProductHandler.Handle, echoJWTMiddleware)

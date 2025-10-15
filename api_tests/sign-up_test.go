@@ -15,28 +15,31 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type RegisterSuite struct {
+type SignUpSuite struct {
 	suite.Suite
+	cartDAO         daos.CartDAO
 	customerDAO     daos.CustomerDAO
 	testEnvironment *testhelpers.TestEnvironment
 }
 
-func (r *RegisterSuite) SetupSuite() {
+func (r *SignUpSuite) SetupSuite() {
 	r.testEnvironment = testhelpers.NewTestEnvironment()
 	err := r.testEnvironment.Start()
 	r.Require().NoError(err)
 
+	r.cartDAO = daos.NewCartDAO(r.testEnvironment.PgxPool())
 	r.customerDAO = daos.NewCustomerDAO(r.testEnvironment.PgxPool())
 }
 
-func (r *RegisterSuite) SetupTest() {
+func (r *SignUpSuite) SetupTest() {
 	err := r.customerDAO.DeletAll()
 	r.Require().NoError(err)
 }
 
-func (r *RegisterSuite) Test1() {
-	r.Run("given that the customer is not already registered, when registering, then returns 204 and a new customer is created", func() {
-		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/register", "application/json", strings.NewReader(`
+func (r *SignUpSuite) Test1() {
+	r.Run(`given that the customer is not already signed up, when signing up, 
+	then returns 204 and a new customer and new cart are created`, func() {
+		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/sign-up", "application/json", strings.NewReader(`
 			{
 				"name": "John Doe",
 				"email": "john.doe@gmail.com",
@@ -59,11 +62,18 @@ func (r *RegisterSuite) Test1() {
 		err = bcrypt.CompareHashAndPassword([]byte(customerSchema.Password), []byte("123456"))
 		r.Require().NoError(err)
 		r.Require().WithinDuration(time.Now().UTC(), customerSchema.CreatedAt, 5*time.Second)
+
+		cartSchema, err := r.cartDAO.FindOneByCustomerId(customerSchema.Id)
+		r.Require().NoError(err)
+		r.Require().NotNil(customerSchema)
+		r.Require().True(utils.IsValidUUID(cartSchema.Id.String()))
+		r.Require().Equal(customerSchema.Id, cartSchema.CustomerId)
+		r.Require().WithinDuration(time.Now(), cartSchema.CreatedAt, 5*time.Second)
 	})
 }
 
-func (r *RegisterSuite) Test2() {
-	r.Run("given that the email has already been taken by someone, when registering, then returns 409", func() {
+func (r *SignUpSuite) Test2() {
+	r.Run("given that the email has already been taken by someone, when signing up, then returns 409", func() {
 		err := r.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -73,7 +83,7 @@ func (r *RegisterSuite) Test2() {
 		})
 		r.Require().NoError(err)
 
-		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/register", "application/json", strings.NewReader(`
+		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/sign-up", "application/json", strings.NewReader(`
 			{
 				"name": "John Doe Smith",
 				"email": "john.doe@gmail.com",
@@ -93,9 +103,9 @@ func (r *RegisterSuite) Test2() {
 	})
 }
 
-func (r *RegisterSuite) Test3() {
-	r.Run("when registering and name is less than 2 characters, then returns 409", func() {
-		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/register", "application/json", strings.NewReader(`
+func (r *SignUpSuite) Test3() {
+	r.Run("when signing up and name is less than 2 characters, then returns 409", func() {
+		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/sign-up", "application/json", strings.NewReader(`
 			{
 				"name": "J",
 				"email": "john.doe@gmail.com",
@@ -115,9 +125,9 @@ func (r *RegisterSuite) Test3() {
 	})
 }
 
-func (r *RegisterSuite) Test4() {
-	r.Run("when registering and email is invalid, then returns 409", func() {
-		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/register", "application/json", strings.NewReader(`
+func (r *SignUpSuite) Test4() {
+	r.Run("when signing up and email is invalid, then returns 409", func() {
+		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/sign-up", "application/json", strings.NewReader(`
 			{
 				"name": "John Doe",
 				"email": "john",
@@ -137,9 +147,9 @@ func (r *RegisterSuite) Test4() {
 	})
 }
 
-func (r *RegisterSuite) Test5() {
-	r.Run("when registering and password is less than 6 characters, then returns 409", func() {
-		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/register", "application/json", strings.NewReader(`
+func (r *SignUpSuite) Test5() {
+	r.Run("when signing up and password is less than 6 characters, then returns 409", func() {
+		response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/sign-up", "application/json", strings.NewReader(`
 			{
 				"name": "John Doe",
 				"email": "john.doe@gmail.com",
@@ -159,8 +169,8 @@ func (r *RegisterSuite) Test5() {
 	})
 }
 
-func (r *RegisterSuite) Test6() {
-	r.Run("when registering in and body is invalid, then returns 400", func() {
+func (r *SignUpSuite) Test6() {
+	r.Run("when signing up in and body is invalid, then returns 400", func() {
 		templates := []map[string]string{
 			{
 				"body": `{}`,
@@ -281,7 +291,7 @@ func (r *RegisterSuite) Test6() {
 		}
 
 		for _, template := range templates {
-			response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/register", "application/json", strings.NewReader(template["body"]))
+			response, err := r.testEnvironment.Client().Post(r.testEnvironment.BaseUrl()+"/v1/sign-up", "application/json", strings.NewReader(template["body"]))
 
 			r.Require().NoError(err)
 
@@ -297,6 +307,6 @@ func (r *RegisterSuite) Test6() {
 	})
 }
 
-func TestRegister(t *testing.T) {
-	suite.Run(t, new(RegisterSuite))
+func TestSignUp(t *testing.T) {
+	suite.Run(t, new(SignUpSuite))
 }

@@ -36,7 +36,7 @@ func (l *LoginSuite) SetupTest() {
 }
 
 func (l *LoginSuite) Test1() {
-	l.Run("given that the customer is already registered, when logging in, then returns 200", func() {
+	l.Run("given that the customer is already signed up, when logging in, then returns 200", func() {
 		err := l.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -76,7 +76,7 @@ func (l *LoginSuite) Test1() {
 }
 
 func (l *LoginSuite) Test2() {
-	l.Run("given that the customer is already registered, when logging in and password is incorrect, then returns 409", func() {
+	l.Run("given that the customer is already signed up, when logging in and password is incorrect, then returns 409", func() {
 		err := l.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -107,7 +107,7 @@ func (l *LoginSuite) Test2() {
 }
 
 func (l *LoginSuite) Test3() {
-	l.Run("given that the customer is not registered, when logging in, then returns 409", func() {
+	l.Run("given that the customer is not signed up, when logging in, then returns 409", func() {
 		response, err := l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(`
 			{
 				"email": "john.doe@gmail.com",

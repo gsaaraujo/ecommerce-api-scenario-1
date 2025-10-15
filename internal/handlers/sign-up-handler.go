@@ -6,23 +6,23 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type RegisterHandlerInput struct {
+type SignUpHandlerInput struct {
 	Name     any `validate:"required,string,notEmpty"`
 	Email    any `validate:"required,string,notEmpty"`
 	Password any `validate:"required,string,notEmpty"`
 }
 
-type RegisterHandler struct {
+type SignUpHandler struct {
 	jsonBodyValidator webhttp.JSONBodyValidator
-	registerUsecase   usecases.RegisterUsecase
+	signUpUsecase     usecases.SignUpUsecase
 }
 
-func NewRegisterHandler(jsonBodyValidator webhttp.JSONBodyValidator, registerUsecase usecases.RegisterUsecase) RegisterHandler {
-	return RegisterHandler{jsonBodyValidator, registerUsecase}
+func NewSignUpHandler(jsonBodyValidator webhttp.JSONBodyValidator, signUpUsecase usecases.SignUpUsecase) SignUpHandler {
+	return SignUpHandler{jsonBodyValidator, signUpUsecase}
 }
 
-func (r RegisterHandler) Handle(c echo.Context) error {
-	var input RegisterHandlerInput
+func (r SignUpHandler) Handle(c echo.Context) error {
+	var input SignUpHandlerInput
 
 	if err := c.Bind(&input); err != nil {
 		return c.NoContent(415)
@@ -32,7 +32,7 @@ func (r RegisterHandler) Handle(c echo.Context) error {
 		return c.JSON(400, map[string]any{"message": messages})
 	}
 
-	err := r.registerUsecase.Execute(usecases.RegisterUsecaseInput{
+	err := r.signUpUsecase.Execute(usecases.SignUpUsecaseInput{
 		Name:     input.Name.(string),
 		Email:    input.Email.(string),
 		Password: input.Password.(string),
