@@ -41,7 +41,7 @@ func (a *AddStockHandler) Handle(c echo.Context) error {
 	}
 
 	if err.Error() == "inventory not found" {
-		return c.JSON(404, map[string]any{"message": err.Error()})
+		return c.JSON(409, map[string]any{"message": err.Error()})
 	}
 
 	if err.Error() == "stock quantity must be higher than zero" {

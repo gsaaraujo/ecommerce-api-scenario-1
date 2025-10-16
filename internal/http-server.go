@@ -114,9 +114,9 @@ func (h *HttpServer) Ready() {
 	addProductUsecase := usecases.NewAddProductUsecase(pgxPool)
 	addStockUsecase := usecases.NewAddStockUsecase(pgxPool, inventoryDAO)
 	publishProductUsecase := usecases.NewPublishProductUsecase(pgxPool, productDAO)
-	addProductToCartUsecase := usecases.NewAddProductToCartUsecase(pgxPool, cartDAO, cartItemDAO, productDAO)
+	addProductToCartUsecase := usecases.NewAddProductToCartUsecase(pgxPool, cartDAO, cartItemDAO, productDAO, inventoryDAO)
 	removeProductFromCartUsecase := usecases.NewRemoveProductFromCartUsecase(pgxPool, cartDAO, cartItemDAO)
-	increaseProductQuantityInCartUsecase := usecases.NewIncreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO)
+	increaseProductQuantityInCartUsecase := usecases.NewIncreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO, inventoryDAO)
 	decreaseProductQuantityInCartUsecase := usecases.NewDecreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)

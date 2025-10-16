@@ -46,11 +46,15 @@ func (a *AddProductToCartHandler) Handle(c echo.Context) error {
 	}
 
 	if err.Error() == "product not found" {
-		return c.JSON(404, map[string]any{"message": err.Error()})
+		return c.JSON(409, map[string]any{"message": err.Error()})
 	}
 
 	if err.Error() == "product quantity cannot be zero" {
-		return c.JSON(404, map[string]any{"message": err.Error()})
+		return c.JSON(409, map[string]any{"message": err.Error()})
+	}
+
+	if err.Error() == "product quantity exceeds the stock available" {
+		return c.JSON(409, map[string]any{"message": err.Error()})
 	}
 
 	return err

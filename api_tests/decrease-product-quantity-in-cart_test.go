@@ -228,43 +228,6 @@ func (i *DecreaseProductQuantityInCartSuite) Test3() {
 }
 
 func (i *DecreaseProductQuantityInCartSuite) Test4() {
-	i.Run("given that the cart does not exist, when decreasing product quantity, then returns 409", func() {
-		err := i.customerDAO.Create(daos.CustomerSchema{
-			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
-			Name:      "John Doe",
-			Email:     "john.doe@gmail.com",
-			Password:  "$2a$10$asLIHej6kxd3Fsdc76QHieBugwCGvsYJeLiZmP1K7/t1GbIbUy.pK",
-			CreatedAt: time.Now().UTC(),
-		})
-		i.Require().NoError(err)
-
-		request, err := http.NewRequest("POST", i.testEnvironment.BaseUrl()+"/v1/decrease-product-quantity-in-cart", strings.NewReader(`
-			{
-				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a",
-				"quantity": 2
-			}
-		`))
-		i.Require().NoError(err)
-		accessToken, err := testhelpers.TestGenerateAccessToken(uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"))
-		i.Require().NoError(err)
-		request.Header.Add("Content-Type", "application/json")
-		request.Header.Add("Authorization", "Bearer "+accessToken)
-
-		response, err := i.testEnvironment.Client().Do(request)
-		i.Require().NoError(err)
-
-		body, err := io.ReadAll(response.Body)
-		i.Require().NoError(err)
-		i.Equal(409, response.StatusCode)
-		i.JSONEq(`
-			{
-				"message": "cart not found"
-			}
-		`, string(body))
-	})
-}
-
-func (i *DecreaseProductQuantityInCartSuite) Test5() {
 	i.Run("given that the product is not in cart, when decreasing product quantity, then returns 409", func() {
 		err := i.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
@@ -315,7 +278,7 @@ func (i *DecreaseProductQuantityInCartSuite) Test5() {
 	})
 }
 
-func (i *DecreaseProductQuantityInCartSuite) Test6() {
+func (i *DecreaseProductQuantityInCartSuite) Test5() {
 	i.Run("when decreasing product quantity and quantity is zero, then returns 409", func() {
 		err := i.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
@@ -352,7 +315,7 @@ func (i *DecreaseProductQuantityInCartSuite) Test6() {
 	})
 }
 
-func (i *DecreaseProductQuantityInCartSuite) Test7() {
+func (i *DecreaseProductQuantityInCartSuite) Test6() {
 	i.Run("when decreasing product quantity and body is invalid, then returns 400", func() {
 		templates := []map[string]string{
 			{

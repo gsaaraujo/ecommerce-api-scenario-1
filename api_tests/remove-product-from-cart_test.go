@@ -112,43 +112,7 @@ func (r *RemoveProductFromCartSuite) Test1() {
 }
 
 func (r *RemoveProductFromCartSuite) Test2() {
-	r.Run("given that the customer have no cart, when removing product from cart, then returns 409", func() {
-		err := r.customerDAO.Create(daos.CustomerSchema{
-			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
-			Name:      "John Doe",
-			Email:     "john.doe@gmail.com",
-			Password:  "$2a$10$asLIHej6kxd3Fsdc76QHieBugwCGvsYJeLiZmP1K7/t1GbIbUy.pK",
-			CreatedAt: time.Now().UTC(),
-		})
-		r.Require().NoError(err)
-
-		request, err := http.NewRequest("POST", r.testEnvironment.BaseUrl()+"/v1/remove-product-from-cart", strings.NewReader(`
-			{
-				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a"
-			}
-		`))
-		r.Require().NoError(err)
-		accessToken, err := testhelpers.TestGenerateAccessToken(uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"))
-		r.Require().NoError(err)
-		request.Header.Add("Content-Type", "application/json")
-		request.Header.Add("Authorization", "Bearer "+accessToken)
-
-		response, err := r.testEnvironment.Client().Do(request)
-		r.Require().NoError(err)
-
-		body, err := io.ReadAll(response.Body)
-		r.Require().NoError(err)
-		r.Equal(409, response.StatusCode)
-		r.JSONEq(`
-			{
-				"message": "cart not found"
-			}
-		`, string(body))
-	})
-}
-
-func (r *RemoveProductFromCartSuite) Test3() {
-	r.Run("given that the customer have a cart but product is not in it, when removing product from cart, then returns 409", func() {
+	r.Run("given that the product is not found in cart, when removing product from cart, then returns 409", func() {
 		err := r.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
@@ -197,7 +161,7 @@ func (r *RemoveProductFromCartSuite) Test3() {
 	})
 }
 
-func (r *RemoveProductFromCartSuite) Test4() {
+func (r *RemoveProductFromCartSuite) Test3() {
 	r.Run("when removing product from cart and body is invalid, then returns 400", func() {
 		templates := []map[string]string{
 			{

@@ -60,5 +60,9 @@ func (r *IncreaseProductQuantityInCartHandler) Handle(c echo.Context) error {
 		return c.JSON(409, map[string]any{"message": err.Error()})
 	}
 
+	if err.Error() == "product quantity exceeds the stock available" {
+		return c.JSON(409, map[string]any{"message": err.Error()})
+	}
+
 	return err
 }

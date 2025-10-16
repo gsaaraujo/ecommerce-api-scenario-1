@@ -30,10 +30,6 @@ func (r *RemoveProductFromCartUsecase) Execute(input RemoveProductFromCartUsecas
 		return err
 	}
 
-	if cartSchema == nil {
-		return errors.New("cart not found")
-	}
-
 	cartItemSchema, err := r.cartItemDAO.FindOneByCartIdAndProductId(cartSchema.Id, input.ProductId)
 	if err != nil {
 		return err

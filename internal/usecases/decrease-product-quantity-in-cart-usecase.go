@@ -35,10 +35,6 @@ func (i *DecreaseProductQuantityInCartUsecase) Execute(input DecreaseProductQuan
 		return err
 	}
 
-	if cartSchema == nil {
-		return errors.New("cart not found")
-	}
-
 	cartItemSchema, err := i.cartItemDAO.FindOneByCartIdAndProductId(cartSchema.Id, input.ProductId)
 	if err != nil {
 		return err

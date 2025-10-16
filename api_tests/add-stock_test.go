@@ -85,7 +85,7 @@ func (a *AddStockSuite) Test1() {
 }
 
 func (a *AddStockSuite) Test2() {
-	a.Run("given that the inventory does not exists, when adding stock, then it returns 404", func() {
+	a.Run("given that the inventory does not exists, when adding stock, then it returns 409", func() {
 		request, err := http.NewRequest("POST", a.testEnvironment.BaseUrl()+"/v1/admin/add-stock", strings.NewReader(`
 			{
 				"inventoryId": "cf23ee55-88c0-4898-ada4-15645c75645d",
@@ -103,7 +103,7 @@ func (a *AddStockSuite) Test2() {
 
 		body, err := io.ReadAll(response.Body)
 		a.Require().NoError(err)
-		a.Equal(404, response.StatusCode)
+		a.Equal(409, response.StatusCode)
 		a.JSONEq(`
 			{
 				"message": "inventory not found"

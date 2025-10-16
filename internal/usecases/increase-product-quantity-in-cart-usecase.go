@@ -16,13 +16,15 @@ type IncreaseProductQuantityInCartUsecaseInput struct {
 }
 
 type IncreaseProductQuantityInCartUsecase struct {
-	pgxPool     *pgxpool.Pool
-	cartDAO     daos.CartDAO
-	cartItemDAO daos.CartItemDAO
+	pgxPool      *pgxpool.Pool
+	cartDAO      daos.CartDAO
+	cartItemDAO  daos.CartItemDAO
+	inventoryDAO daos.InventoryDAO
 }
 
-func NewIncreaseProductQuantityInCartUsecase(pgxPool *pgxpool.Pool, cartDAO daos.CartDAO, cartItemDAO daos.CartItemDAO) IncreaseProductQuantityInCartUsecase {
-	return IncreaseProductQuantityInCartUsecase{pgxPool, cartDAO, cartItemDAO}
+func NewIncreaseProductQuantityInCartUsecase(pgxPool *pgxpool.Pool, cartDAO daos.CartDAO,
+	cartItemDAO daos.CartItemDAO, inventoryDAO daos.InventoryDAO) IncreaseProductQuantityInCartUsecase {
+	return IncreaseProductQuantityInCartUsecase{pgxPool, cartDAO, cartItemDAO, inventoryDAO}
 }
 
 func (i *IncreaseProductQuantityInCartUsecase) Execute(input IncreaseProductQuantityInCartUsecaseInput) error {
@@ -35,10 +37,6 @@ func (i *IncreaseProductQuantityInCartUsecase) Execute(input IncreaseProductQuan
 		return err
 	}
 
-	if cartSchema == nil {
-		return errors.New("cart not found")
-	}
-
 	cartItemSchema, err := i.cartItemDAO.FindOneByCartIdAndProductId(cartSchema.Id, input.ProductId)
 	if err != nil {
 		return err
@@ -46,6 +44,15 @@ func (i *IncreaseProductQuantityInCartUsecase) Execute(input IncreaseProductQuan
 
 	if cartItemSchema == nil {
 		return errors.New("product not found in cart")
+	}
+
+	inventorySchema, err := i.inventoryDAO.FindOneByProductId(input.ProductId)
+	if err != nil {
+		return err
+	}
+
+	if input.Quantity > inventorySchema.StockQuantity {
+		return errors.New("product quantity exceeds the stock available")
 	}
 
 	_, err = i.pgxPool.Exec(context.Background(), "UPDATE cart_items SET quantity = quantity + $1 WHERE id = $2",
