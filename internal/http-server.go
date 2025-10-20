@@ -108,6 +108,9 @@ func (h *HttpServer) Ready() {
 	cartDAO := daos.NewCartDAO(pgxPool)
 	cartItemDAO := daos.NewCartItemDAO(pgxPool)
 	productDAO := daos.NewProductDAO(pgxPool)
+	addressDAO := daos.NewAddressDAO(pgxPool)
+
+	httpZipCodeGateway := gateways.NewHttpZipCodeGateway(awsSecretsGateway)
 
 	loginUsecase := usecases.NewLoginUsecase(customerDAO, awsSecretsGateway)
 	signUpUsecase := usecases.NewSignUpUsecase(pgxPool, customerDAO)
@@ -118,6 +121,7 @@ func (h *HttpServer) Ready() {
 	removeProductFromCartUsecase := usecases.NewRemoveProductFromCartUsecase(pgxPool, cartDAO, cartItemDAO)
 	increaseProductQuantityInCartUsecase := usecases.NewIncreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO, inventoryDAO)
 	decreaseProductQuantityInCartUsecase := usecases.NewDecreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO)
+	addAddressUsecase := usecases.NewAddAddressUsecase(addressDAO, httpZipCodeGateway)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)
 	signUpHandler := handlers.NewSignUpHandler(jsonBodyValidator, signUpUsecase)
@@ -129,6 +133,7 @@ func (h *HttpServer) Ready() {
 	increaseProductQuantityInCartHandler := handlers.NewIncreaseProductQuantityInCartHandler(jsonBodyValidator, increaseProductQuantityInCartUsecase)
 	decreaseProductQuantityInCartHandler := handlers.NewDecreaseProductQuantityInCartHandler(jsonBodyValidator, decreaseProductQuantityInCartUsecase)
 	getCartHandler := handlers.NewGetCartHandler(pgxPool, cartDAO)
+	addAddressHandler := handlers.NewAddAddressHandler(jsonBodyValidator, addAddressUsecase)
 
 	h.echo.GET("/health", func(c echo.Context) error {
 		return c.NoContent(204)
@@ -148,6 +153,7 @@ func (h *HttpServer) Ready() {
 	v1.POST("/remove-product-from-cart", removeProductFromCartHandler.Handle, echoJWTMiddleware)
 	v1.POST("/increase-product-quantity-in-cart", increaseProductQuantityInCartHandler.Handle, echoJWTMiddleware)
 	v1.POST("/decrease-product-quantity-in-cart", decreaseProductQuantityInCartHandler.Handle, echoJWTMiddleware)
+	v1.POST("/add-address", addAddressHandler.Handle, echoJWTMiddleware)
 
 	v1.GET("/cart", getCartHandler.Handle, echoJWTMiddleware)
 

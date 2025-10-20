@@ -49,6 +49,7 @@ func (t *TestEnvironment) Start() error {
 	_ = os.Setenv("AWS_ENDPOINT_URL", t.localstackContainerUrl)
 	_ = os.Setenv("AWS_SECRET_MANAGER_NAME", "secret-us-east-1-local-app")
 	_ = os.Setenv("TERN_MIGRATIONS_PATH", "../migrations")
+	_ = os.Setenv("ZIPCODE_URL", t.wiremockContainerUrl)
 
 	awsConfig, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
@@ -143,6 +144,7 @@ func (t *TestEnvironment) createSecrets() error {
 				"REDIS_URL": "%s",
 				"POSTGRES_URL": "%s",
 				"RABBITMQ_URL": "%s",
+				"ZIPCODE_TOKEN": "a7416146283d464294cebea38d5cb5ff",
 				"ACCESS_TOKEN_SIGNING_KEY": "81c4a8d5b2554de4ba736e93255ba633"
 			}
 		`, t.redisContainerUrl, t.postgresContainerUrl, t.rabbitmqContainerUrl)),

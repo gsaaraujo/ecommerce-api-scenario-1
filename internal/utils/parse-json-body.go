@@ -8,7 +8,7 @@ import (
 func ParseJSONBody[T any](body io.ReadCloser) (T, error) {
 	var v T
 
-	go func() {
+	defer func() {
 		_ = body.Close()
 	}()
 
