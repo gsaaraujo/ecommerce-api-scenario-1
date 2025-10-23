@@ -18,7 +18,8 @@
         "usernamehw.errorlens",
         "pomdtr.excalidraw-editor",
         "ms-azuretools.vscode-docker",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "shd101wyy.markdown-preview-enhanced"
       ]
     }
   },

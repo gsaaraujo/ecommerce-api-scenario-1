@@ -14,6 +14,7 @@ import (
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/usecases"
 	webhttp "github.com/gsaaraujo/ecommerce-api-scenario-1/internal/web-http"
 	"github.com/jackc/pgx/v5/pgxpool"
+	mercadopagoconfig "github.com/mercadopago/sdk-go/pkg/config"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -63,6 +64,18 @@ func (h *HttpServer) Ready() {
 	}
 
 	accessTokenSigningKey, err := awsSecretsGateway.Get("ACCESS_TOKEN_SIGNING_KEY")
+	if err != nil {
+		h.logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	mercadoPagoAccessKey, err := awsSecretsGateway.Get("MERCADO_PAGO_ACCESS_KEY")
+	if err != nil {
+		h.logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	mercadoPagoConfig, err := mercadopagoconfig.New(mercadoPagoAccessKey)
 	if err != nil {
 		h.logger.Error(err.Error())
 		os.Exit(1)
@@ -122,6 +135,7 @@ func (h *HttpServer) Ready() {
 	increaseProductQuantityInCartUsecase := usecases.NewIncreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO, inventoryDAO)
 	decreaseProductQuantityInCartUsecase := usecases.NewDecreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO)
 	addAddressUsecase := usecases.NewAddAddressUsecase(addressDAO, httpZipCodeGateway)
+	checkoutPostpaymentUsecase := usecases.NewCheckoutPostpaymentUsecase(mercadoPagoConfig, pgxPool, cartDAO, cartItemDAO, inventoryDAO)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)
 	signUpHandler := handlers.NewSignUpHandler(jsonBodyValidator, signUpUsecase)
@@ -134,6 +148,7 @@ func (h *HttpServer) Ready() {
 	decreaseProductQuantityInCartHandler := handlers.NewDecreaseProductQuantityInCartHandler(jsonBodyValidator, decreaseProductQuantityInCartUsecase)
 	getCartHandler := handlers.NewGetCartHandler(pgxPool, cartDAO)
 	addAddressHandler := handlers.NewAddAddressHandler(jsonBodyValidator, addAddressUsecase)
+	checkoutPostpaymentHandler := handlers.NewCheckoutPostpaymentHandler(jsonBodyValidator, checkoutPostpaymentUsecase)
 
 	h.echo.GET("/health", func(c echo.Context) error {
 		return c.NoContent(204)
@@ -154,6 +169,7 @@ func (h *HttpServer) Ready() {
 	v1.POST("/increase-product-quantity-in-cart", increaseProductQuantityInCartHandler.Handle, echoJWTMiddleware)
 	v1.POST("/decrease-product-quantity-in-cart", decreaseProductQuantityInCartHandler.Handle, echoJWTMiddleware)
 	v1.POST("/add-address", addAddressHandler.Handle, echoJWTMiddleware)
+	v1.POST("/checkout-postpayment", checkoutPostpaymentHandler.Handle)
 
 	v1.GET("/cart", getCartHandler.Handle, echoJWTMiddleware)
 

@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY,
   order_id UUID NOT NULL,
-  payment_gateway VARCHAR(50) NOT NULL,
+  payment_gateway_name VARCHAR(50) NOT NULL,
   payment_gateway_transaction_id VARCHAR(100) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   FOREIGN KEY (order_id) REFERENCES orders(id)

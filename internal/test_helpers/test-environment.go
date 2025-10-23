@@ -144,6 +144,7 @@ func (t *TestEnvironment) createSecrets() error {
 				"REDIS_URL": "%s",
 				"POSTGRES_URL": "%s",
 				"RABBITMQ_URL": "%s",
+				"MERCADO_PAGO_ACCESS_KEY": "",
 				"ZIPCODE_TOKEN": "a7416146283d464294cebea38d5cb5ff",
 				"ACCESS_TOKEN_SIGNING_KEY": "81c4a8d5b2554de4ba736e93255ba633"
 			}
