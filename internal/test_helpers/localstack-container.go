@@ -23,7 +23,7 @@ func NewLocalstackContainer() (LocalstackContainer, error) {
 			ExposedPorts: []string{"4566/tcp"},
 			WaitingFor:   wait.ForLog("Ready.").WithStartupTimeout(10 * time.Second),
 			Env: map[string]string{
-				"SERVICES": "secretsmanager",
+				"SERVICES": "secretsmanager,sqs",
 			},
 		},
 	})

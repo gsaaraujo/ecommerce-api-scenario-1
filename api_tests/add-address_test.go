@@ -1,6 +1,8 @@
 package apitests_test
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -36,6 +38,9 @@ func (a *AddAddressSuite) SetupTest() {
 	a.Require().NoError(err)
 
 	err = a.addressDAO.DeletAll()
+	a.Require().NoError(err)
+
+	err = a.testEnvironment.RedisClient().FlushDB(context.Background()).Err()
 	a.Require().NoError(err)
 }
 
@@ -276,6 +281,124 @@ func (a *AddAddressSuite) Test3() {
 }
 
 func (a *AddAddressSuite) Test4() {
+	a.Run("given that the zip code info from external api is not cached, when adding, returns 201 and cache it", func() {
+		err := a.customerDAO.Create(daos.CustomerSchema{
+			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
+			Name:      "John Doe",
+			Email:     "john.doe@gmail.com",
+			Password:  "$2a$10$asLIHej6kxd3Fsdc76QHieBugwCGvsYJeLiZmP1K7/t1GbIbUy.pK",
+			CreatedAt: time.Now().UTC(),
+		})
+		a.Require().NoError(err)
+		mockRes, err := http.Post(a.testEnvironment.WiremockContainerUrl()+"/__admin/mappings", "application/json", strings.NewReader(`
+			{
+				"request": {
+					"method": "GET",
+					"url": "/rest/a7416146283d464294cebea38d5cb5ff/info.json/73301/degrees"
+				},
+				"response": {
+					"status": 200,
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"jsonBody": {
+						"zip_code": "73301",
+						"city": "Austin",
+						"state": "TX"
+					}
+				}
+			}
+		`))
+		a.Require().NoError(err)
+		a.Require().Equal(201, mockRes.StatusCode)
+
+		request, err := http.NewRequest("POST", a.testEnvironment.BaseUrl()+"/v1/add-address", strings.NewReader(`
+			{
+				"city": "Austin",
+				"state": "TX",
+				"zipCode": "73301",
+				"streetName": "Delivery Road",
+				"streetNumber": "321"
+			}
+		`))
+		a.Require().NoError(err)
+		accessToken, err := testhelpers.TestGenerateAccessToken(uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"))
+		a.Require().NoError(err)
+		request.Header.Add("Content-Type", "application/json")
+		request.Header.Add("Authorization", "Bearer "+accessToken)
+
+		response, err := a.testEnvironment.Client().Do(request)
+		a.Require().NoError(err)
+
+		body, err := io.ReadAll(response.Body)
+		a.Require().NoError(err)
+		a.Equal(204, response.StatusCode)
+		a.Equal("", string(body))
+
+		zipCode, err := a.testEnvironment.RedisClient().Get(context.Background(), "zip_codes:73301").Result()
+		a.Require().NoError(err)
+		a.Require().JSONEq(`
+			{
+				"city": "Austin",
+				"state": "TX"
+			}
+		`, zipCode)
+	})
+}
+
+func (a *AddAddressSuite) Test5() {
+	a.Run("given that the zip code info from external api is already cached, when adding, returns 201", func() {
+		err := a.customerDAO.Create(daos.CustomerSchema{
+			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
+			Name:      "John Doe",
+			Email:     "john.doe@gmail.com",
+			Password:  "$2a$10$asLIHej6kxd3Fsdc76QHieBugwCGvsYJeLiZmP1K7/t1GbIbUy.pK",
+			CreatedAt: time.Now().UTC(),
+		})
+		a.Require().NoError(err)
+		location, err := json.Marshal(map[string]any{
+			"city":  "Austin",
+			"state": "TX",
+		})
+		a.Require().NoError(err)
+		err = a.testEnvironment.RedisClient().Set(context.Background(), "zip_codes:73301", location, 0).Err()
+		a.Require().NoError(err)
+
+		request, err := http.NewRequest("POST", a.testEnvironment.BaseUrl()+"/v1/add-address", strings.NewReader(`
+			{
+				"city": "Austin",
+				"state": "TX",
+				"zipCode": "73301",
+				"streetName": "Delivery Road",
+				"streetNumber": "321"
+			}
+		`))
+		a.Require().NoError(err)
+		accessToken, err := testhelpers.TestGenerateAccessToken(uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"))
+		a.Require().NoError(err)
+		request.Header.Add("Content-Type", "application/json")
+		request.Header.Add("Authorization", "Bearer "+accessToken)
+
+		response, err := a.testEnvironment.Client().Do(request)
+		a.Require().NoError(err)
+
+		body, err := io.ReadAll(response.Body)
+		a.Require().NoError(err)
+		a.Equal(204, response.StatusCode)
+		a.Equal("", string(body))
+
+		zipCode, err := a.testEnvironment.RedisClient().Get(context.Background(), "zip_codes:73301").Result()
+		a.Require().NoError(err)
+		a.Require().JSONEq(`
+			{
+				"city": "Austin",
+				"state": "TX"
+			}
+		`, zipCode)
+	})
+}
+
+func (a *AddAddressSuite) Test6() {
 	a.Run("when adding and ZIP code does not match any location, returns 409", func() {
 		err := a.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
@@ -335,7 +458,7 @@ func (a *AddAddressSuite) Test4() {
 	})
 }
 
-func (a *AddAddressSuite) Test5() {
+func (a *AddAddressSuite) Test7() {
 	a.Run("when adding and ZIP code does not match any location, returns 409", func() {
 		err := a.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
@@ -396,7 +519,7 @@ func (a *AddAddressSuite) Test5() {
 	})
 }
 
-func (a *AddAddressSuite) Test6() {
+func (a *AddAddressSuite) Test8() {
 	a.Run("when adding and state is invalid, returns 409", func() {
 		err := a.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
@@ -457,7 +580,7 @@ func (a *AddAddressSuite) Test6() {
 	})
 }
 
-func (a *AddAddressSuite) Test7() {
+func (a *AddAddressSuite) Test9() {
 	a.Run("when adding and ZIP code is invalid, returns 409", func() {
 		err := a.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
@@ -518,7 +641,7 @@ func (a *AddAddressSuite) Test7() {
 	})
 }
 
-func (a *AddAddressSuite) Test8() {
+func (a *AddAddressSuite) Test10() {
 	a.Run("when adding and ZIP code is invalid, returns 409", func() {
 		err := a.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
@@ -579,7 +702,7 @@ func (a *AddAddressSuite) Test8() {
 	})
 }
 
-func (a *AddAddressSuite) Test9() {
+func (a *AddAddressSuite) Test11() {
 	a.Run("when adding address and body is invalid, then returns 400", func() {
 		templates := []map[string]string{
 			{

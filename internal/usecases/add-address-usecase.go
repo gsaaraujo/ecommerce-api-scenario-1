@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -12,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/gateways"
+	"github.com/redis/go-redis/v9"
 )
 
 type AddAddressUsecaseInput struct {
@@ -24,12 +27,13 @@ type AddAddressUsecaseInput struct {
 }
 
 type AddAddressUsecase struct {
+	redisClient        *redis.Client
 	addressDAO         daos.AddressDAO
 	httpZipCodeGateway gateways.HttpZipCodeGateway
 }
 
-func NewAddAddressUsecase(addressDAO daos.AddressDAO, httpZipCodeGateway gateways.HttpZipCodeGateway) AddAddressUsecase {
-	return AddAddressUsecase{addressDAO, httpZipCodeGateway}
+func NewAddAddressUsecase(redisClient *redis.Client, addressDAO daos.AddressDAO, httpZipCodeGateway gateways.HttpZipCodeGateway) AddAddressUsecase {
+	return AddAddressUsecase{redisClient, addressDAO, httpZipCodeGateway}
 }
 
 func (a *AddAddressUsecase) Execute(input AddAddressUsecaseInput) error {
@@ -51,16 +55,57 @@ func (a *AddAddressUsecase) Execute(input AddAddressUsecaseInput) error {
 		return errors.New("street number must contain only digits (0-9)")
 	}
 
-	httpZipCodeResponse, err := a.httpZipCodeGateway.Get(input.ZipCode)
-	if err != nil {
+	type Location struct {
+		City  string `json:"city"`
+		State string `json:"state"`
+	}
+	var location *Location = nil
+
+	cachedZipCode, err := a.redisClient.Get(context.Background(), "zip_codes:"+input.ZipCode).Result()
+	if err != nil && err.Error() != "redis: nil" {
 		return err
 	}
 
-	if httpZipCodeResponse == nil {
+	if cachedZipCode == "" {
+		httpZipCodeResponse, err := a.httpZipCodeGateway.Get(input.ZipCode)
+		if err != nil {
+			return err
+		}
+
+		if httpZipCodeResponse != nil {
+			location = &Location{
+				City:  httpZipCodeResponse.City,
+				State: httpZipCodeResponse.State,
+			}
+
+			locationJson, err := json.Marshal(location)
+			if err != nil {
+				return err
+			}
+
+			err = a.redisClient.Set(context.Background(), "zip_codes:"+input.ZipCode, string(locationJson), 0).Err()
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		var locationJson Location
+		err = json.Unmarshal([]byte(cachedZipCode), &locationJson)
+		if err != nil {
+			return err
+		}
+
+		location = &Location{
+			City:  locationJson.City,
+			State: locationJson.State,
+		}
+	}
+
+	if location == nil {
 		return errors.New("ZIP code does not match any location")
 	}
 
-	if httpZipCodeResponse.City != input.City || httpZipCodeResponse.State != input.State {
+	if location.City != input.City || location.State != input.State {
 		return errors.New("ZIP code location does not match with provided city and state")
 	}
 

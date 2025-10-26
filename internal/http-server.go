@@ -15,6 +15,7 @@ import (
 	webhttp "github.com/gsaaraujo/ecommerce-api-scenario-1/internal/web-http"
 	"github.com/jackc/pgx/v5/pgxpool"
 	mercadopagoconfig "github.com/mercadopago/sdk-go/pkg/config"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -93,22 +94,22 @@ func (h *HttpServer) Ready() {
 	// 	os.Exit(1)
 	// }
 
-	// redisUrl, err := awsSecretsGateway.Get("REDIS_URL")
-	// if err != nil {
-	// 	h.logger.Error(err.Error())
-	// 	os.Exit(1)
-	// }
+	redisUrl, err := awsSecretsGateway.Get("REDIS_URL")
+	if err != nil {
+		h.logger.Error(err.Error())
+		os.Exit(1)
+	}
 
-	// redisParsedUrl, err := redis.ParseURL(redisUrl)
-	// if err != nil {
-	// 	h.logger.Error(err.Error())
-	// 	os.Exit(1)
-	// }
+	redisParsedUrl, err := redis.ParseURL(redisUrl)
+	if err != nil {
+		h.logger.Error(err.Error())
+		os.Exit(1)
+	}
 
-	// redisClient := redis.NewClient(&redis.Options{
-	// 	Addr:     redisParsedUrl.Addr,
-	// 	Password: redisParsedUrl.Password,
-	// })
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     redisParsedUrl.Addr,
+		Password: redisParsedUrl.Password,
+	})
 
 	jsonBodyValidator, err := webhttp.NewJSONBodyValidator()
 	if err != nil {
@@ -134,7 +135,7 @@ func (h *HttpServer) Ready() {
 	removeProductFromCartUsecase := usecases.NewRemoveProductFromCartUsecase(pgxPool, cartDAO, cartItemDAO)
 	increaseProductQuantityInCartUsecase := usecases.NewIncreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO, inventoryDAO)
 	decreaseProductQuantityInCartUsecase := usecases.NewDecreaseProductQuantityInCartUsecase(pgxPool, cartDAO, cartItemDAO)
-	addAddressUsecase := usecases.NewAddAddressUsecase(addressDAO, httpZipCodeGateway)
+	addAddressUsecase := usecases.NewAddAddressUsecase(redisClient, addressDAO, httpZipCodeGateway)
 	checkoutPostpaymentUsecase := usecases.NewCheckoutPostpaymentUsecase(mercadoPagoConfig, pgxPool, cartDAO, cartItemDAO, inventoryDAO)
 
 	loginHandler := handlers.NewLoginHandler(jsonBodyValidator, loginUsecase)
