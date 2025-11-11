@@ -10,17 +10,15 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.24
+          go-version: 1.25.3
 
       - name: Run Go Lint
         uses: golangci/golangci-lint-action@v8
-        with:
-          version: v2.1
 
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master

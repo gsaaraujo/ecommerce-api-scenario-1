@@ -89,7 +89,6 @@ func (c *CheckoutPostpaymentUsecase) Execute(input CheckoutPostpaymentUsecaseInp
 		totalQuantity += record.CartItemQuantity
 		totalPrice += record.ProductPrice * int64(record.CartItemQuantity)
 
-		// vai dar merda
 		_, err = tx.Exec(context.Background(),
 			"UPDATE inventories SET stock_quantity = stock_quantity - $1 WHERE product_id = $2", record.CartItemQuantity, record.ProductId)
 		if err != nil {
