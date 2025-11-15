@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/redis/go-redis/v9"
@@ -37,11 +38,12 @@ func NewTestEnvironment() *TestEnvironment {
 	return &TestEnvironment{}
 }
 
-func (t *TestEnvironment) Start() error {
-	err := t.startContainers()
-	if err != nil {
-		return err
-	}
+func (t *TestEnvironment) Start() {
+	t.postgresContainerUrl = utils.GetOrThrow(NewPostgresContainer()).url
+	t.localstackContainerUrl = utils.GetOrThrow(NewLocalstackContainer()).url
+	t.wiremockContainerUrl = utils.GetOrThrow(NewWiremockContainer()).url
+	t.redisContainerUrl = utils.GetOrThrow(NewRedisContainer()).url
+	t.rabbitmqContainerUrl = utils.GetOrThrow(NewRabbitmqContainer()).url
 
 	_ = os.Setenv("AWS_REGION", "us-east-1")
 	_ = os.Setenv("AWS_ACCESS_KEY_ID", "test")
@@ -51,93 +53,28 @@ func (t *TestEnvironment) Start() error {
 	_ = os.Setenv("TERN_MIGRATIONS_PATH", "../migrations")
 	_ = os.Setenv("ZIPCODE_URL", t.wiremockContainerUrl)
 
-	awsConfig, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return err
-	}
+	t.awsConfig = utils.GetOrThrow(config.LoadDefaultConfig(context.TODO()))
 
-	t.awsConfig = awsConfig
+	t.createSecrets()
 
-	err = t.createSecrets()
-	if err != nil {
-		return err
-	}
+	utils.ThrowOnError(t.runMigrations())
 
-	err = t.runMigrations()
-	if err != nil {
-		return err
-	}
+	t.pgxPool = utils.GetOrThrow(pgxpool.New(context.Background(), t.postgresContainerUrl))
+	t.rabbitmqConn = utils.GetOrThrow(amqp091.Dial(t.rabbitmqContainerUrl))
 
-	pgxPool, err := pgxpool.New(context.Background(), t.postgresContainerUrl)
-	if err != nil {
-		return err
-	}
-
-	t.pgxPool = pgxPool
-
-	redisParsedUrl, err := redis.ParseURL(t.redisContainerUrl)
-	if err != nil {
-		return err
-	}
-
+	redisParsedUrl := utils.GetOrThrow(redis.ParseURL(t.redisContainerUrl))
 	t.redisClient = redis.NewClient(&redis.Options{
 		Addr:     redisParsedUrl.Addr,
 		Password: redisParsedUrl.Password,
 	})
 
-	rabbitmqConn, err := amqp091.Dial(t.rabbitmqContainerUrl)
-	if err != nil {
-		return err
-	}
-
-	t.rabbitmqConn = rabbitmqConn
-
 	t.startHttpServer()
-	return nil
 }
 
-func (t *TestEnvironment) startContainers() error {
-	postgresContainer, err := NewPostgresContainer()
-	if err != nil {
-		return err
-	}
-
-	t.postgresContainerUrl = postgresContainer.Url()
-
-	localstackContainer, err := NewLocalstackContainer()
-	if err != nil {
-		return err
-	}
-
-	t.localstackContainerUrl = localstackContainer.Url()
-
-	wiremockContainer, err := NewWiremockContainer()
-	if err != nil {
-		return err
-	}
-
-	t.wiremockContainerUrl = wiremockContainer.Url()
-
-	redisContainer, err := NewRedisContainer()
-	if err != nil {
-		return err
-	}
-
-	t.redisContainerUrl = redisContainer.Url()
-
-	rabbitmqContainer, err := NewRabbitmqContainer()
-	if err != nil {
-		return err
-	}
-
-	t.rabbitmqContainerUrl = rabbitmqContainer.Url()
-	return nil
-}
-
-func (t *TestEnvironment) createSecrets() error {
+func (t *TestEnvironment) createSecrets() {
 	secretsClient := secretsmanager.NewFromConfig(t.awsConfig)
 
-	_, err := secretsClient.CreateSecret(context.TODO(), &secretsmanager.CreateSecretInput{
+	utils.GetOrThrow(secretsClient.CreateSecret(context.TODO(), &secretsmanager.CreateSecretInput{
 		Name: aws.String("secret-us-east-1-local-app"),
 		SecretString: aws.String(fmt.Sprintf(`
 			{
@@ -149,19 +86,11 @@ func (t *TestEnvironment) createSecrets() error {
 				"ACCESS_TOKEN_SIGNING_KEY": "81c4a8d5b2554de4ba736e93255ba633"
 			}
 		`, t.redisContainerUrl, t.postgresContainerUrl, t.rabbitmqContainerUrl)),
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	}))
 }
 
 func (t *TestEnvironment) runMigrations() error {
-	urlParsed, err := url.Parse(t.postgresContainerUrl)
-	if err != nil {
-		return err
-	}
+	urlParsed := utils.GetOrThrow(url.Parse(t.postgresContainerUrl))
 
 	_ = os.Setenv("PGUSER", "postgres")
 	_ = os.Setenv("PGPASSWORD", "postgres")

@@ -82,18 +82,6 @@ func (h *HttpServer) Ready() {
 		os.Exit(1)
 	}
 
-	// rabbitmqUrl, err := awsSecretsGateway.Get("RABBITMQ_URL")
-	// if err != nil {
-	// 	h.logger.Error(err.Error())
-	// 	os.Exit(1)
-	// }
-
-	// rabbitmqConn, err := amqp091.Dial(rabbitmqUrl)
-	// if err != nil {
-	// 	h.logger.Error(err.Error())
-	// 	os.Exit(1)
-	// }
-
 	redisUrl, err := awsSecretsGateway.Get("REDIS_URL")
 	if err != nil {
 		h.logger.Error(err.Error())

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mercadopago/sdk-go/pkg/preference"
 )
@@ -26,7 +27,7 @@ func NewCheckoutPrepayment(pgxPool *pgxpool.Pool, preferenceClient preference.Cl
 }
 
 func (c *CheckoutPrepayment) Execute(input CheckoutPrepaymentInput) (CheckoutPrepaymentOutput, error) {
-	rows, err := c.pgxPool.Query(context.Background(),
+	rows := utils.GetOrThrow(c.pgxPool.Query(context.Background(),
 		`
 			SELECT
 				c.id AS cart_id,
@@ -42,10 +43,7 @@ func (c *CheckoutPrepayment) Execute(input CheckoutPrepaymentInput) (CheckoutPre
 			JOIN products p
 				ON ci.product_id = p.id
 			WHERE c.customer_id = $1
-		`, input.CustomerId)
-	if err != nil {
-		return CheckoutPrepaymentOutput{}, err
-	}
+		`, input.CustomerId))
 
 	type schema struct {
 		CartId             uuid.UUID
@@ -60,11 +58,8 @@ func (c *CheckoutPrepayment) Execute(input CheckoutPrepaymentInput) (CheckoutPre
 	records := []schema{}
 	for rows.Next() {
 		var item schema
-		err := rows.Scan(&item.CartId, &item.CartItemId, &item.CartItemQuantity,
-			&item.ProductId, &item.ProductName, &item.ProductDescription, &item.ProductPrice)
-		if err != nil {
-			return CheckoutPrepaymentOutput{}, err
-		}
+		utils.ThrowOnError(rows.Scan(&item.CartId, &item.CartItemId, &item.CartItemQuantity,
+			&item.ProductId, &item.ProductName, &item.ProductDescription, &item.ProductPrice))
 
 		records = append(records, item)
 	}
@@ -80,12 +75,9 @@ func (c *CheckoutPrepayment) Execute(input CheckoutPrepaymentInput) (CheckoutPre
 		})
 	}
 
-	preferenceResponse, err := c.preferenceClient.Create(context.Background(), preference.Request{
+	preferenceResponse := utils.GetOrThrow(c.preferenceClient.Create(context.Background(), preference.Request{
 		Items: itemsRequest,
-	})
-	if err != nil {
-		return CheckoutPrepaymentOutput{}, err
-	}
+	}))
 
 	return CheckoutPrepaymentOutput{
 		PreferenceId: preferenceResponse.ID,

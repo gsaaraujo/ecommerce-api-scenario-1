@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -25,15 +26,13 @@ func NewCustomerDAO(pgxPool *pgxpool.Pool) CustomerDAO {
 	return CustomerDAO{pgxPool}
 }
 
-func (p *CustomerDAO) Create(customerSchema CustomerSchema) error {
-	_, err := p.pgxPool.Exec(context.Background(),
+func (p *CustomerDAO) Create(customerSchema CustomerSchema) {
+	_ = utils.GetOrThrow(p.pgxPool.Exec(context.Background(),
 		"INSERT INTO customers (id, name, email, password, created_at) VALUES ($1, $2, $3, $4, $5)",
-		customerSchema.Id, customerSchema.Name, customerSchema.Email, customerSchema.Password, customerSchema.CreatedAt)
-
-	return err
+		customerSchema.Id, customerSchema.Name, customerSchema.Email, customerSchema.Password, customerSchema.CreatedAt))
 }
 
-func (c *CustomerDAO) FindOneByEmail(email string) (*CustomerSchema, error) {
+func (c *CustomerDAO) FindOneByEmail(email string) *CustomerSchema {
 	var customerSchema CustomerSchema
 
 	err := c.pgxPool.QueryRow(context.Background(),
@@ -41,17 +40,16 @@ func (c *CustomerDAO) FindOneByEmail(email string) (*CustomerSchema, error) {
 		Scan(&customerSchema.Id, &customerSchema.Name, &customerSchema.Email, &customerSchema.Password, &customerSchema.CreatedAt)
 
 	if err != nil && err == pgx.ErrNoRows {
-		return nil, nil
+		return nil
 	}
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return &customerSchema, nil
+	return &customerSchema
 }
 
-func (c *CustomerDAO) DeletAll() error {
-	_, err := c.pgxPool.Exec(context.Background(), "TRUNCATE TABLE customers CASCADE")
-	return err
+func (c *CustomerDAO) DeletAll() {
+	_ = utils.GetOrThrow(c.pgxPool.Exec(context.Background(), "TRUNCATE TABLE customers CASCADE"))
 }

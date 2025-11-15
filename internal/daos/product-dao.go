@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -26,15 +27,13 @@ func NewProductDAO(pgxPool *pgxpool.Pool) ProductDAO {
 	return ProductDAO{pgxPool}
 }
 
-func (p *ProductDAO) Create(productSchema ProductSchema) error {
-	_, err := p.pgxPool.Exec(context.Background(),
+func (p *ProductDAO) Create(productSchema ProductSchema) {
+	_ = utils.GetOrThrow(p.pgxPool.Exec(context.Background(),
 		"INSERT INTO products (id, status, name, description, price, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
-		productSchema.Id, productSchema.Status, productSchema.Name, productSchema.Description, productSchema.Price, productSchema.CreatedAt)
-
-	return err
+		productSchema.Id, productSchema.Status, productSchema.Name, productSchema.Description, productSchema.Price, productSchema.CreatedAt))
 }
 
-func (p *ProductDAO) FindOneById(id uuid.UUID) (*ProductSchema, error) {
+func (p *ProductDAO) FindOneById(id uuid.UUID) *ProductSchema {
 	var productSchema ProductSchema
 
 	err := p.pgxPool.QueryRow(context.Background(),
@@ -42,17 +41,17 @@ func (p *ProductDAO) FindOneById(id uuid.UUID) (*ProductSchema, error) {
 		Scan(&productSchema.Id, &productSchema.Status, &productSchema.Name, &productSchema.Description, &productSchema.Price, &productSchema.CreatedAt)
 
 	if err != nil && err == pgx.ErrNoRows {
-		return nil, nil
+		return nil
 	}
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return &productSchema, nil
+	return &productSchema
 }
 
-func (p *ProductDAO) FindOneByName(name string) (*ProductSchema, error) {
+func (p *ProductDAO) FindOneByName(name string) *ProductSchema {
 	var productSchema ProductSchema
 
 	err := p.pgxPool.QueryRow(context.Background(),
@@ -60,34 +59,33 @@ func (p *ProductDAO) FindOneByName(name string) (*ProductSchema, error) {
 		Scan(&productSchema.Id, &productSchema.Status, &productSchema.Name, &productSchema.Description, &productSchema.Price, &productSchema.CreatedAt)
 
 	if err != nil && err == pgx.ErrNoRows {
-		return nil, nil
+		return nil
 	}
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return &productSchema, nil
+	return &productSchema
 }
 
-func (p *ProductDAO) ExistsById(id uuid.UUID) (bool, error) {
+func (p *ProductDAO) ExistsById(id uuid.UUID) bool {
 	var productSchema ProductSchema
 
 	err := p.pgxPool.QueryRow(context.Background(), "SELECT id FROM products WHERE id = $1", id).
 		Scan(&productSchema.Id)
 
 	if err != nil && err == pgx.ErrNoRows {
-		return false, nil
+		return false
 	}
 
 	if err != nil {
-		return false, err
+		panic(err)
 	}
 
-	return true, nil
+	return true
 }
 
-func (p *ProductDAO) DeletAll() error {
-	_, err := p.pgxPool.Exec(context.Background(), "TRUNCATE TABLE products CASCADE")
-	return err
+func (p *ProductDAO) DeletAll() {
+	_ = utils.GetOrThrow(p.pgxPool.Exec(context.Background(), "TRUNCATE TABLE products CASCADE"))
 }

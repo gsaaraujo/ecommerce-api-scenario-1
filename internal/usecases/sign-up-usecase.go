@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -41,24 +42,15 @@ func (r SignUpUsecase) Execute(input SignUpUsecaseInput) error {
 		return errors.New("password must be at least 6 characters")
 	}
 
-	customerSchema, err := r.customerDAO.FindOneByEmail(input.Email)
-	if err != nil {
-		return err
-	}
+	customerSchema := r.customerDAO.FindOneByEmail(input.Email)
 
 	if customerSchema != nil {
 		return errors.New("this email address has already been taken by someone")
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
+	hashedPassword := utils.GetOrThrow(bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost))
 
-	tx, err := r.pgxPool.Begin(context.Background())
-	if err != nil {
-		return err
-	}
+	tx := utils.GetOrThrow(r.pgxPool.Begin(context.Background()))
 
 	defer func() {
 		_ = tx.Rollback(context.Background())
@@ -66,17 +58,13 @@ func (r SignUpUsecase) Execute(input SignUpUsecaseInput) error {
 
 	customerId := uuid.New()
 
-	_, err = tx.Exec(context.Background(), "INSERT INTO customers (id, name, email, password, created_at) VALUES ($1, $2, $3, $4, $5)",
-		customerId, input.Name, input.Email, string(hashedPassword), time.Now().UTC())
-	if err != nil {
-		return err
-	}
+	_ = utils.GetOrThrow(tx.Exec(context.Background(), "INSERT INTO customers (id, name, email, password, created_at) VALUES ($1, $2, $3, $4, $5)",
+		customerId, input.Name, input.Email, string(hashedPassword), time.Now().UTC()))
 
-	_, err = tx.Exec(context.Background(), "INSERT INTO carts (id, customer_id, created_at) VALUES ($1, $2, $3)",
-		uuid.New(), customerId, time.Now().UTC())
-	if err != nil {
-		return err
-	}
+	_ = utils.GetOrThrow(tx.Exec(context.Background(), "INSERT INTO carts (id, customer_id, created_at) VALUES ($1, $2, $3)",
+		uuid.New(), customerId, time.Now().UTC()))
 
-	return tx.Commit(context.Background())
+	utils.ThrowOnError(tx.Commit(context.Background()))
+
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -24,15 +25,13 @@ func NewInventoryDAO(pgxPool *pgxpool.Pool) InventoryDAO {
 	return InventoryDAO{pgxPool}
 }
 
-func (p *InventoryDAO) Create(inventorySchema InventorySchema) error {
-	_, err := p.pgxPool.Exec(context.Background(),
+func (p *InventoryDAO) Create(inventorySchema InventorySchema) {
+	_ = utils.GetOrThrow(p.pgxPool.Exec(context.Background(),
 		"INSERT INTO inventories (id, product_id, stock_quantity, created_at) VALUES ($1, $2, $3, $4)",
-		inventorySchema.Id, inventorySchema.ProductId, inventorySchema.StockQuantity, inventorySchema.CreatedAt)
-
-	return err
+		inventorySchema.Id, inventorySchema.ProductId, inventorySchema.StockQuantity, inventorySchema.CreatedAt))
 }
 
-func (m *InventoryDAO) FindOneByProductId(productId uuid.UUID) (*InventorySchema, error) {
+func (m *InventoryDAO) FindOneByProductId(productId uuid.UUID) *InventorySchema {
 	var inventorySchema InventorySchema
 
 	err := m.pgxPool.QueryRow(context.Background(),
@@ -40,34 +39,33 @@ func (m *InventoryDAO) FindOneByProductId(productId uuid.UUID) (*InventorySchema
 		Scan(&inventorySchema.Id, &inventorySchema.ProductId, &inventorySchema.StockQuantity, &inventorySchema.CreatedAt)
 
 	if err != nil && err == pgx.ErrNoRows {
-		return nil, nil
+		return nil
 	}
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return &inventorySchema, nil
+	return &inventorySchema
 }
 
-func (m *InventoryDAO) ExistsById(id uuid.UUID) (bool, error) {
+func (m *InventoryDAO) ExistsById(id uuid.UUID) bool {
 	var inventorySchema InventorySchema
 
 	err := m.pgxPool.QueryRow(context.Background(), "SELECT id FROM inventories WHERE id = $1", id).
 		Scan(&inventorySchema.Id)
 
 	if err != nil && err == pgx.ErrNoRows {
-		return false, nil
+		return false
 	}
 
 	if err != nil {
-		return false, err
+		panic(err)
 	}
 
-	return true, nil
+	return true
 }
 
-func (p *InventoryDAO) DeletAll() error {
-	_, err := p.pgxPool.Exec(context.Background(), "TRUNCATE TABLE inventories CASCADE")
-	return err
+func (p *InventoryDAO) DeletAll() {
+	_ = utils.GetOrThrow(p.pgxPool.Exec(context.Background(), "TRUNCATE TABLE inventories CASCADE"))
 }

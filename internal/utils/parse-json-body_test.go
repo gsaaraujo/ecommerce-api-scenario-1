@@ -18,8 +18,7 @@ func (p *ParseJSONBodySuite) Test1() {
 		reader := strings.NewReader(`{"name": "John Doe"}`)
 		readCloser := io.NopCloser(reader)
 
-		body, err := utils.ParseJSONBody[map[string]any](readCloser)
-		p.Require().NoError(err)
+		body := utils.ParseJSONBody[map[string]any](readCloser)
 
 		p.Equal("John Doe", body["name"])
 	})

@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 )
 
 type AwsSecretsGateway struct {
@@ -26,18 +27,12 @@ func (a *AwsSecretsGateway) Get(key string) (string, error) {
 		return "", errors.New("AWS_SECRET_MANAGER_NAME environment variable not found")
 	}
 
-	secretValue, err := a.secretsClient.GetSecretValue(context.TODO(), &secretsmanager.GetSecretValueInput{
+	secretValue := utils.GetOrThrow(a.secretsClient.GetSecretValue(context.TODO(), &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(os.Getenv("AWS_SECRET_MANAGER_NAME")),
-	})
-	if err != nil {
-		return "", err
-	}
+	}))
 
 	var secret map[string]any
-	err = json.Unmarshal([]byte(*secretValue.SecretString), &secret)
-	if err != nil {
-		return "", err
-	}
+	utils.ThrowOnError(json.Unmarshal([]byte(*secretValue.SecretString), &secret))
 
 	value, exists := secret[key]
 

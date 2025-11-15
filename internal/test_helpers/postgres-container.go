@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -15,7 +16,8 @@ type PostgresContainer struct {
 
 func NewPostgresContainer() (PostgresContainer, error) {
 	ctx := context.Background()
-	postgresContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+
+	postgresContainer := utils.GetOrThrow(testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		Started: true,
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "postgres:17.2-alpine3.21",
@@ -29,23 +31,10 @@ func NewPostgresContainer() (PostgresContainer, error) {
 				"POSTGRES_PASSWORD": "postgres",
 			},
 		},
-	})
+	}))
 
-	if err != nil {
-		return PostgresContainer{}, err
-	}
-
-	host, err := postgresContainer.Host(ctx)
-
-	if err != nil {
-		return PostgresContainer{}, err
-	}
-
-	port, err := postgresContainer.MappedPort(ctx, "5432/tcp")
-
-	if err != nil {
-		return PostgresContainer{}, err
-	}
+	host := utils.GetOrThrow(postgresContainer.Host(ctx))
+	port := utils.GetOrThrow(postgresContainer.MappedPort(ctx, "5432/tcp"))
 
 	return PostgresContainer{
 		url: fmt.Sprintf("postgres://postgres:postgres@%s:%s/postgres", host, port.Port()),

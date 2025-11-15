@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,19 +24,13 @@ func NewPublishProductUsecase(pgxPool *pgxpool.Pool, productDAO daos.ProductDAO)
 }
 
 func (p *PublishProductUsecase) Execute(input PublishProductUsecaseInput) error {
-	productExists, err := p.productDAO.ExistsById(input.ProductId)
-	if err != nil {
-		return err
-	}
+	productExists := p.productDAO.ExistsById(input.ProductId)
 
 	if !productExists {
 		return errors.New("product not found")
 	}
 
-	_, err = p.pgxPool.Exec(context.Background(), "UPDATE products SET status = $1 WHERE id = $2", "published", input.ProductId)
-	if err != nil {
-		return err
-	}
+	_ = utils.GetOrThrow(p.pgxPool.Exec(context.Background(), "UPDATE products SET status = $1 WHERE id = $2", "published", input.ProductId))
 
 	return nil
 }

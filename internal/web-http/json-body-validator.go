@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 )
 
 type JSONBodyValidator struct {
@@ -16,41 +17,12 @@ type JSONBodyValidator struct {
 func NewJSONBodyValidator() (JSONBodyValidator, error) {
 	newValidator := validator.New(validator.WithRequiredStructEnabled())
 
-	err := newValidator.RegisterValidation("string", isString)
-
-	if err != nil {
-		return JSONBodyValidator{}, err
-	}
-
-	err = newValidator.RegisterValidation("integer", isInteger)
-
-	if err != nil {
-		return JSONBodyValidator{}, err
-	}
-
-	err = newValidator.RegisterValidation("notEmpty", isNotEmpty)
-
-	if err != nil {
-		return JSONBodyValidator{}, err
-	}
-
-	err = newValidator.RegisterValidation("positive", isPositive)
-
-	if err != nil {
-		return JSONBodyValidator{}, err
-	}
-
-	err = newValidator.RegisterValidation("timeRFC3339", isTimeRFC3339)
-
-	if err != nil {
-		return JSONBodyValidator{}, err
-	}
-
-	err = newValidator.RegisterValidation("date", isDate)
-
-	if err != nil {
-		return JSONBodyValidator{}, err
-	}
+	utils.ThrowOnError(newValidator.RegisterValidation("string", isString))
+	utils.ThrowOnError(newValidator.RegisterValidation("integer", isInteger))
+	utils.ThrowOnError(newValidator.RegisterValidation("notEmpty", isNotEmpty))
+	utils.ThrowOnError(newValidator.RegisterValidation("positive", isPositive))
+	utils.ThrowOnError(newValidator.RegisterValidation("timeRFC3339", isTimeRFC3339))
+	utils.ThrowOnError(newValidator.RegisterValidation("date", isDate))
 
 	jsonBodyValidator := JSONBodyValidator{
 		validate: newValidator,

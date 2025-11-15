@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -25,51 +26,43 @@ func NewCartItemDAO(pgxPool *pgxpool.Pool) CartItemDAO {
 	return CartItemDAO{pgxPool}
 }
 
-func (c *CartItemDAO) Create(cartItemSchema CartItemSchema) error {
-	_, err := c.pgxPool.Exec(context.Background(), "INSERT INTO cart_items (id, cart_id, product_id, quantity, created_at) VALUES ($1, $2, $3, $4, $5)",
-		cartItemSchema.Id, cartItemSchema.CartId, cartItemSchema.ProductId, cartItemSchema.Quantity, cartItemSchema.CreatedAt)
-
-	return err
+func (c *CartItemDAO) Create(cartItemSchema CartItemSchema) {
+	_ = utils.GetOrThrow(c.pgxPool.Exec(context.Background(), "INSERT INTO cart_items (id, cart_id, product_id, quantity, created_at) VALUES ($1, $2, $3, $4, $5)",
+		cartItemSchema.Id, cartItemSchema.CartId, cartItemSchema.ProductId, cartItemSchema.Quantity, cartItemSchema.CreatedAt))
 }
 
-func (c *CartItemDAO) FindAllByCartId(cartId uuid.UUID) ([]CartItemSchema, error) {
-	rows, err := c.pgxPool.Query(context.Background(),
-		"SELECT id, cart_id, product_id, quantity, created_at FROM cart_items WHERE cart_id = $1", cartId)
-	if err != nil {
-		return []CartItemSchema{}, nil
-	}
+func (c *CartItemDAO) FindAllByCartId(cartId uuid.UUID) []CartItemSchema {
+	rows := utils.GetOrThrow(c.pgxPool.Query(context.Background(),
+		"SELECT id, cart_id, product_id, quantity, created_at FROM cart_items WHERE cart_id = $1", cartId))
 
 	var cartItemsSchema []CartItemSchema
 	for rows.Next() {
 		var item CartItemSchema
 
-		err := rows.Scan(&item.Id, &item.CartId, &item.ProductId, &item.Quantity, &item.CreatedAt)
-		if err != nil {
-			return []CartItemSchema{}, nil
-		}
-
+		utils.ThrowOnError(rows.Scan(&item.Id, &item.CartId, &item.ProductId, &item.Quantity, &item.CreatedAt))
 		cartItemsSchema = append(cartItemsSchema, item)
 	}
 
-	return cartItemsSchema, nil
+	return cartItemsSchema
 }
 
-func (c *CartItemDAO) ExistsByProductId(productId uuid.UUID) (bool, error) {
+func (c *CartItemDAO) ExistsByProductId(productId uuid.UUID) bool {
 	var id uuid.UUID
 
 	err := c.pgxPool.QueryRow(context.Background(), "SELECT id FROM cart_items WHERE product_id = $1", productId).Scan(&id)
+
 	if err != nil && err == pgx.ErrNoRows {
-		return false, nil
+		return false
 	}
 
 	if err != nil {
-		return false, err
+		panic(err)
 	}
 
-	return true, nil
+	return true
 }
 
-func (c *CartItemDAO) FindOneByCartIdAndProductId(cartId uuid.UUID, productId uuid.UUID) (*CartItemSchema, error) {
+func (c *CartItemDAO) FindOneByCartIdAndProductId(cartId uuid.UUID, productId uuid.UUID) *CartItemSchema {
 	var cartItemSchema CartItemSchema
 
 	err := c.pgxPool.QueryRow(context.Background(),
@@ -77,17 +70,16 @@ func (c *CartItemDAO) FindOneByCartIdAndProductId(cartId uuid.UUID, productId uu
 		Scan(&cartItemSchema.Id, &cartItemSchema.CartId, &cartItemSchema.ProductId, &cartItemSchema.Quantity, &cartItemSchema.CreatedAt)
 
 	if err != nil && err == pgx.ErrNoRows {
-		return nil, nil
+		return nil
 	}
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return &cartItemSchema, nil
+	return &cartItemSchema
 }
 
-func (c *CartItemDAO) DeletAll() error {
-	_, err := c.pgxPool.Exec(context.Background(), "TRUNCATE TABLE cart_items CASCADE")
-	return err
+func (c *CartItemDAO) DeletAll() {
+	_ = utils.GetOrThrow(c.pgxPool.Exec(context.Background(), "TRUNCATE TABLE cart_items CASCADE"))
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,20 +26,14 @@ func NewRemoveProductFromCartUsecase(pgxPool *pgxpool.Pool, cartDAO daos.CartDAO
 }
 
 func (r *RemoveProductFromCartUsecase) Execute(input RemoveProductFromCartUsecaseInput) error {
-	cartSchema, err := r.cartDAO.FindOneByCustomerId(input.CustomerId)
-	if err != nil {
-		return err
-	}
-
-	cartItemSchema, err := r.cartItemDAO.FindOneByCartIdAndProductId(cartSchema.Id, input.ProductId)
-	if err != nil {
-		return err
-	}
+	cartSchema := r.cartDAO.FindOneByCustomerId(input.CustomerId)
+	cartItemSchema := r.cartItemDAO.FindOneByCartIdAndProductId(cartSchema.Id, input.ProductId)
 
 	if cartItemSchema == nil {
 		return errors.New("product not found in cart")
 	}
 
-	_, err = r.pgxPool.Exec(context.Background(), "DELETE FROM cart_items WHERE product_id = $1", input.ProductId)
-	return err
+	_ = utils.GetOrThrow(r.pgxPool.Exec(context.Background(), "DELETE FROM cart_items WHERE product_id = $1", input.ProductId))
+
+	return nil
 }

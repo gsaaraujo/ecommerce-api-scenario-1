@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -14,30 +15,18 @@ type WiremockContainer struct {
 
 func NewWiremockContainer() (WiremockContainer, error) {
 	ctx := context.Background()
-	localStackContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+
+	localStackContainer := utils.GetOrThrow(testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		Started: true,
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "wiremock/wiremock:3.13.1",
 			ExposedPorts: []string{"8080/tcp"},
 			WaitingFor:   wait.ForListeningPort("8080"),
 		},
-	})
+	}))
 
-	if err != nil {
-		return WiremockContainer{}, err
-	}
-
-	host, err := localStackContainer.Host(ctx)
-
-	if err != nil {
-		return WiremockContainer{}, err
-	}
-
-	port, err := localStackContainer.MappedPort(ctx, "8080/tcp")
-
-	if err != nil {
-		return WiremockContainer{}, err
-	}
+	host := utils.GetOrThrow(localStackContainer.Host(ctx))
+	port := utils.GetOrThrow(localStackContainer.MappedPort(ctx, "8080/tcp"))
 
 	return WiremockContainer{
 		url: fmt.Sprintf("http://%s:%s", host, port.Port()),

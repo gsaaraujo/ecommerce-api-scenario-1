@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,20 +29,14 @@ func (a *AddStockUsecase) Execute(input AddStockUsecaseInput) error {
 		return errors.New("stock quantity must be higher than zero")
 	}
 
-	inventoryExists, err := a.inventoryDAO.ExistsById(input.InventoryId)
-	if err != nil {
-		return err
-	}
+	inventoryExists := a.inventoryDAO.ExistsById(input.InventoryId)
 
 	if !inventoryExists {
 		return errors.New("inventory not found")
 	}
 
-	_, err = a.pgxPool.Exec(context.Background(),
-		"UPDATE inventories SET stock_quantity = stock_quantity + $1 WHERE id = $2", input.Stock, input.InventoryId)
-	if err != nil {
-		return err
-	}
+	_ = utils.GetOrThrow(a.pgxPool.Exec(context.Background(),
+		"UPDATE inventories SET stock_quantity = stock_quantity + $1 WHERE id = $2", input.Stock, input.InventoryId))
 
 	return nil
 }

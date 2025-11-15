@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/usecases"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 )
@@ -41,16 +42,13 @@ func (g *GetCartHandler) Handle(c echo.Context) error {
 	token := c.Get("customer").(*jwt.Token)
 	claims := token.Claims.(*usecases.JwtAccessTokenClaims)
 
-	cartSchema, err := g.cartDAO.FindOneByCustomerId(uuid.MustParse(claims.Subject))
-	if err != nil {
-		return err
-	}
+	cartSchema := g.cartDAO.FindOneByCustomerId(uuid.MustParse(claims.Subject))
 
 	if cartSchema == nil {
 		return c.JSON(409, map[string]any{"message": "cart not found"})
 	}
 
-	rows, err := g.pgxPool.Query(context.Background(),
+	rows := utils.GetOrThrow(g.pgxPool.Query(context.Background(),
 		`
 			SELECT
 				c.id AS cart_id,
@@ -66,10 +64,7 @@ func (g *GetCartHandler) Handle(c echo.Context) error {
 			JOIN products p
 				ON ci.product_id = p.id
 			WHERE c.customer_id = $1
-		`, claims.Subject)
-	if err != nil {
-		return err
-	}
+		`, claims.Subject))
 
 	type schema struct {
 		CartId             uuid.UUID
@@ -84,11 +79,9 @@ func (g *GetCartHandler) Handle(c echo.Context) error {
 	records := []schema{}
 	for rows.Next() {
 		var item schema
-		err := rows.Scan(&item.CartId, &item.CartItemId, &item.CartItemQuantity,
-			&item.ProductId, &item.ProductName, &item.ProductDescription, &item.ProductPrice)
-		if err != nil {
-			return err
-		}
+
+		utils.ThrowOnError(rows.Scan(&item.CartId, &item.CartItemId, &item.CartItemQuantity,
+			&item.ProductId, &item.ProductName, &item.ProductDescription, &item.ProductPrice))
 
 		records = append(records, item)
 	}

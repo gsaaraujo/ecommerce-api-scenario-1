@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -30,26 +31,19 @@ func (i *DecreaseProductQuantityInCartUsecase) Execute(input DecreaseProductQuan
 		return errors.New("you cannot decrease the quantity of product with a value equal to zero")
 	}
 
-	cartSchema, err := i.cartDAO.FindOneByCustomerId(input.CustomerId)
-	if err != nil {
-		return err
-	}
-
-	cartItemSchema, err := i.cartItemDAO.FindOneByCartIdAndProductId(cartSchema.Id, input.ProductId)
-	if err != nil {
-		return err
-	}
+	cartSchema := i.cartDAO.FindOneByCustomerId(input.CustomerId)
+	cartItemSchema := i.cartItemDAO.FindOneByCartIdAndProductId(cartSchema.Id, input.ProductId)
 
 	if cartItemSchema == nil {
 		return errors.New("product not found in cart")
 	}
 
 	if input.Quantity >= cartItemSchema.Quantity {
-		_, err = i.pgxPool.Exec(context.Background(), "DELETE FROM cart_items WHERE id = $1", cartItemSchema.Id)
-		return err
+		_ = utils.GetOrThrow(i.pgxPool.Exec(context.Background(), "DELETE FROM cart_items WHERE id = $1", cartItemSchema.Id))
 	}
 
-	_, err = i.pgxPool.Exec(context.Background(), "UPDATE cart_items SET quantity = quantity - $1 WHERE id = $2",
-		input.Quantity, cartItemSchema.Id)
-	return err
+	_ = utils.GetOrThrow(i.pgxPool.Exec(context.Background(), "UPDATE cart_items SET quantity = quantity - $1 WHERE id = $2",
+		input.Quantity, cartItemSchema.Id))
+
+	return nil
 }

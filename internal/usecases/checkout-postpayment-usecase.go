@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mercadopago/sdk-go/pkg/config"
 )
@@ -30,7 +31,7 @@ func NewCheckoutPostpaymentUsecase(mercadoPagoConfig *config.Config, pgxPool *pg
 }
 
 func (c *CheckoutPostpaymentUsecase) Execute(input CheckoutPostpaymentUsecaseInput) error {
-	rows, err := c.pgxPool.Query(context.Background(),
+	rows := utils.GetOrThrow(c.pgxPool.Query(context.Background(),
 		`
 			SELECT
 				c.id AS cart_id,
@@ -46,10 +47,7 @@ func (c *CheckoutPostpaymentUsecase) Execute(input CheckoutPostpaymentUsecaseInp
 			JOIN products p
 				ON ci.product_id = p.id
 			WHERE c.customer_id = $1
-		`, input.CustomerId)
-	if err != nil {
-		return err
-	}
+		`, input.CustomerId))
 
 	type schema struct {
 		CartId             uuid.UUID
@@ -64,19 +62,14 @@ func (c *CheckoutPostpaymentUsecase) Execute(input CheckoutPostpaymentUsecaseInp
 	records := []schema{}
 	for rows.Next() {
 		var item schema
-		err := rows.Scan(&item.CartId, &item.CartItemId, &item.CartItemQuantity,
-			&item.ProductId, &item.ProductName, &item.ProductDescription, &item.ProductPrice)
-		if err != nil {
-			return err
-		}
+
+		utils.ThrowOnError(rows.Scan(&item.CartId, &item.CartItemId, &item.CartItemQuantity,
+			&item.ProductId, &item.ProductName, &item.ProductDescription, &item.ProductPrice))
 
 		records = append(records, item)
 	}
 
-	tx, err := c.pgxPool.Begin(context.Background())
-	if err != nil {
-		return err
-	}
+	tx := utils.GetOrThrow(c.pgxPool.Begin(context.Background()))
 
 	defer func() {
 		_ = tx.Rollback(context.Background())
@@ -89,42 +82,28 @@ func (c *CheckoutPostpaymentUsecase) Execute(input CheckoutPostpaymentUsecaseInp
 		totalQuantity += record.CartItemQuantity
 		totalPrice += record.ProductPrice * int64(record.CartItemQuantity)
 
-		_, err = tx.Exec(context.Background(),
-			"UPDATE inventories SET stock_quantity = stock_quantity - $1 WHERE product_id = $2", record.CartItemQuantity, record.ProductId)
-		if err != nil {
-			return err
-		}
+		_ = utils.GetOrThrow(tx.Exec(context.Background(),
+			"UPDATE inventories SET stock_quantity = stock_quantity - $1 WHERE product_id = $2", record.CartItemQuantity, record.ProductId))
 	}
 
 	orderId := uuid.New()
 
-	_, err = tx.Exec(context.Background(),
+	_ = utils.GetOrThrow(tx.Exec(context.Background(),
 		"INSERT INTO orders (id, customer_id, total_price, total_quantity, created_at) VALUES ($1, $2, $3, $4, $5)",
-		orderId, input.CustomerId, totalPrice, totalQuantity, time.Now().UTC())
-	if err != nil {
-		return err
-	}
+		orderId, input.CustomerId, totalPrice, totalQuantity, time.Now().UTC()))
 
 	for _, record := range records {
-		_, err = tx.Exec(context.Background(),
+		_ = utils.GetOrThrow(tx.Exec(context.Background(),
 			"INSERT INTO order_items (id, order_id, product_id, quantity, price, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
-			uuid.New(), orderId, record.ProductId, record.CartItemQuantity, record.ProductPrice, time.Now().UTC())
-		if err != nil {
-			return err
-		}
+			uuid.New(), orderId, record.ProductId, record.CartItemQuantity, record.ProductPrice, time.Now().UTC()))
 	}
 
-	_, err = tx.Exec(context.Background(),
+	_ = utils.GetOrThrow(tx.Exec(context.Background(),
 		"INSERT INTO payments (id, order_id, payment_gateway_name, payment_gateway_transaction_id, created_at) VALUES ($1, $2, $3, $4, $5)",
-		uuid.New(), orderId, "mercado_pago", input.PaymentGatewayTransactionId, time.Now().UTC())
-	if err != nil {
-		return err
-	}
+		uuid.New(), orderId, "mercado_pago", input.PaymentGatewayTransactionId, time.Now().UTC()))
 
-	_, err = tx.Exec(context.Background(), "DELETE FROM cart_items WHERE cart_id = $1", records[0].CartId)
-	if err != nil {
-		return err
-	}
+	_ = utils.GetOrThrow(tx.Exec(context.Background(), "DELETE FROM cart_items WHERE cart_id = $1", records[0].CartId))
+	utils.ThrowOnError(tx.Commit(context.Background()))
 
-	return tx.Commit(context.Background())
+	return nil
 }

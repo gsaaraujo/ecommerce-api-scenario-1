@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/gateways"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -67,10 +68,7 @@ func (a *AddAddressUsecase) Execute(input AddAddressUsecaseInput) error {
 	}
 
 	if cachedZipCode == "" {
-		httpZipCodeResponse, err := a.httpZipCodeGateway.Get(input.ZipCode)
-		if err != nil {
-			return err
-		}
+		httpZipCodeResponse := utils.GetOrThrow(a.httpZipCodeGateway.Get(input.ZipCode))
 
 		if httpZipCodeResponse != nil {
 			location = &Location{
@@ -78,22 +76,12 @@ func (a *AddAddressUsecase) Execute(input AddAddressUsecaseInput) error {
 				State: httpZipCodeResponse.State,
 			}
 
-			locationJson, err := json.Marshal(location)
-			if err != nil {
-				return err
-			}
-
-			err = a.redisClient.Set(context.Background(), "zip_codes:"+input.ZipCode, string(locationJson), 0).Err()
-			if err != nil {
-				return err
-			}
+			locationJson := utils.GetOrThrow(json.Marshal(location))
+			utils.ThrowOnError(a.redisClient.Set(context.Background(), "zip_codes:"+input.ZipCode, string(locationJson), 0).Err())
 		}
 	} else {
 		var locationJson Location
-		err = json.Unmarshal([]byte(cachedZipCode), &locationJson)
-		if err != nil {
-			return err
-		}
+		utils.ThrowOnError(json.Unmarshal([]byte(cachedZipCode), &locationJson))
 
 		location = &Location{
 			City:  locationJson.City,
@@ -110,13 +98,9 @@ func (a *AddAddressUsecase) Execute(input AddAddressUsecaseInput) error {
 	}
 
 	addressLine := fmt.Sprintf("%s %s, %s, %s %s", input.StreetNumber, input.StreetName, input.City, input.State, input.ZipCode)
+	isThereDefaultAddress := a.addressDAO.FindOneByIsDefault(true)
 
-	isThereDefaultAddress, err := a.addressDAO.FindOneByIsDefault(true)
-	if err != nil {
-		return err
-	}
-
-	return a.addressDAO.Create(daos.AddressSchema{
+	a.addressDAO.Create(daos.AddressSchema{
 		Id:          uuid.New(),
 		CustomerId:  input.CustomerId,
 		IsDefault:   !isThereDefaultAddress,
@@ -128,4 +112,6 @@ func (a *AddAddressUsecase) Execute(input AddAddressUsecaseInput) error {
 		AddressLine: addressLine,
 		CreatedAt:   time.Now().UTC(),
 	})
+
+	return nil
 }

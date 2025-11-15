@@ -43,19 +43,12 @@ func (h *HttpZipCodeGateway) Get(zipCode string) (*HttpZipCodeSuccessResponse, e
 	}
 
 	if response.StatusCode == 200 {
-		responseBody, err := utils.ParseJSONBody[HttpZipCodeSuccessResponse](response.Body)
-		if err != nil {
-			return nil, err
-		}
-
+		responseBody := utils.ParseJSONBody[HttpZipCodeSuccessResponse](response.Body)
 		return &responseBody, nil
 	}
 
 	if response.StatusCode == 404 {
-		responseBody, err := utils.ParseJSONBody[HttpZipCodeFailResponse](response.Body)
-		if err != nil {
-			return nil, err
-		}
+		responseBody := utils.ParseJSONBody[HttpZipCodeFailResponse](response.Body)
 
 		if responseBody.ErrorMsg == fmt.Sprintf(`Zip code "%s" not found.`, zipCode) {
 			return nil, nil

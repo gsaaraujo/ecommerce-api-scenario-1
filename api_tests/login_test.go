@@ -24,48 +24,41 @@ type LoginSuite struct {
 
 func (l *LoginSuite) SetupSuite() {
 	l.testEnvironment = testhelpers.NewTestEnvironment()
-	err := l.testEnvironment.Start()
-	l.Require().NoError(err)
-
+	l.testEnvironment.Start()
 	l.customerDAO = daos.NewCustomerDAO(l.testEnvironment.PgxPool())
 }
 
 func (l *LoginSuite) SetupTest() {
-	err := l.customerDAO.DeletAll()
-	l.Require().NoError(err)
+	l.customerDAO.DeletAll()
 }
 
 func (l *LoginSuite) Test1() {
 	l.Run("given that the customer is already signed up, when logging in, then returns 200", func() {
-		err := l.customerDAO.Create(daos.CustomerSchema{
+		l.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
 			Email:     "john.doe@gmail.com",
 			Password:  "$2a$10$asLIHej6kxd3Fsdc76QHieBugwCGvsYJeLiZmP1K7/t1GbIbUy.pK",
 			CreatedAt: time.Now().UTC(),
 		})
-		l.Require().NoError(err)
 
-		response, err := l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(`
+		response := utils.GetOrThrow(l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(`
 			{
 				"email": "john.doe@gmail.com",
 				"password": "123456"
 			}
-		`))
-		l.Require().NoError(err)
+		`)))
 
 		l.Equal(200, response.StatusCode)
-		body, err := utils.ParseJSONBody[map[string]map[string]any](response.Body)
-		l.Require().NoError(err)
+		body := utils.ParseJSONBody[map[string]map[string]any](response.Body)
 		customerId := body["data"]["customerId"].(string)
 		accessToken := body["data"]["accessToken"].(string)
 		l.True(utils.IsValidUUID(customerId))
 		l.NotEmpty(accessToken)
 
-		token, err := jwt.ParseWithClaims(accessToken, &usecases.JwtAccessTokenClaims{}, func(token *jwt.Token) (any, error) {
+		token := utils.GetOrThrow(jwt.ParseWithClaims(accessToken, &usecases.JwtAccessTokenClaims{}, func(token *jwt.Token) (any, error) {
 			return []byte("81c4a8d5b2554de4ba736e93255ba633"), nil
-		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
-		l.Require().NoError(err)
+		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()})))
 
 		claims := token.Claims.(*usecases.JwtAccessTokenClaims)
 		l.Require().Equal("f59207c8-e837-4159-b67d-78c716510747", claims.Subject)
@@ -77,25 +70,22 @@ func (l *LoginSuite) Test1() {
 
 func (l *LoginSuite) Test2() {
 	l.Run("given that the customer is already signed up, when logging in and password is incorrect, then returns 409", func() {
-		err := l.customerDAO.Create(daos.CustomerSchema{
+		l.customerDAO.Create(daos.CustomerSchema{
 			Id:        uuid.MustParse("f59207c8-e837-4159-b67d-78c716510747"),
 			Name:      "John Doe",
 			Email:     "john.doe@gmail.com",
 			Password:  "$2a$10$asLIHej6kxd3Fsdc76QHieBugwCGvsYJeLiZmP1K7/t1GbIbUy.pK",
 			CreatedAt: time.Now().UTC(),
 		})
-		l.Require().NoError(err)
 
-		response, err := l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(`
+		response := utils.GetOrThrow(l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(`
 			{
 				"email": "john.doe@gmail.com",
 				"password": "abc123"
 			}
-		`))
-		l.Require().NoError(err)
+		`)))
 
-		body, err := io.ReadAll(response.Body)
-		l.Require().NoError(err)
+		body := utils.GetOrThrow(io.ReadAll(response.Body))
 
 		l.Equal(409, response.StatusCode)
 		l.JSONEq(`
@@ -108,16 +98,14 @@ func (l *LoginSuite) Test2() {
 
 func (l *LoginSuite) Test3() {
 	l.Run("given that the customer is not signed up, when logging in, then returns 409", func() {
-		response, err := l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(`
+		response := utils.GetOrThrow(l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(`
 			{
 				"email": "john.doe@gmail.com",
 				"password": "123456"
 			}
-		`))
-		l.Require().NoError(err)
+		`)))
 
-		body, err := io.ReadAll(response.Body)
-		l.Require().NoError(err)
+		body := utils.GetOrThrow(io.ReadAll(response.Body))
 
 		l.Equal(409, response.StatusCode)
 		l.JSONEq(`
@@ -130,16 +118,14 @@ func (l *LoginSuite) Test3() {
 
 func (l *LoginSuite) Test4() {
 	l.Run("when logging in and email address is invalid, then returns 409", func() {
-		response, err := l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(`
+		response := utils.GetOrThrow(l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(`
 			{
 				"email": "john",
 				"password": "123456"
 			}
-		`))
-		l.Require().NoError(err)
+		`)))
 
-		body, err := io.ReadAll(response.Body)
-		l.Require().NoError(err)
+		body := utils.GetOrThrow(io.ReadAll(response.Body))
 
 		l.Equal(409, response.StatusCode)
 		l.JSONEq(`
@@ -253,12 +239,10 @@ func (l *LoginSuite) Test5() {
 		}
 
 		for _, template := range templates {
-			response, err := l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json", strings.NewReader(template["body"]))
+			response := utils.GetOrThrow(l.testEnvironment.Client().Post(l.testEnvironment.BaseUrl()+"/v1/login", "application/json",
+				strings.NewReader(template["body"])))
 
-			l.Require().NoError(err)
-
-			body, err := io.ReadAll(response.Body)
-			l.Require().NoError(err)
+			body := utils.GetOrThrow(io.ReadAll(response.Body))
 
 			l.Equal(400, response.StatusCode)
 			l.JSONEq(fmt.Sprintf(`

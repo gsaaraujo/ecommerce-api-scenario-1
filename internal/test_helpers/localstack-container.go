@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -16,7 +17,7 @@ type LocalstackContainer struct {
 func NewLocalstackContainer() (LocalstackContainer, error) {
 	ctx := context.Background()
 
-	localStackContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	localStackContainer := utils.GetOrThrow(testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		Started: true,
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "localstack/localstack:4.2.0",
@@ -26,23 +27,10 @@ func NewLocalstackContainer() (LocalstackContainer, error) {
 				"SERVICES": "secretsmanager,sqs",
 			},
 		},
-	})
+	}))
 
-	if err != nil {
-		return LocalstackContainer{}, err
-	}
-
-	host, err := localStackContainer.Host(ctx)
-
-	if err != nil {
-		return LocalstackContainer{}, err
-	}
-
-	port, err := localStackContainer.MappedPort(ctx, "4566/tcp")
-
-	if err != nil {
-		return LocalstackContainer{}, err
-	}
+	host := utils.GetOrThrow(localStackContainer.Host(ctx))
+	port := utils.GetOrThrow(localStackContainer.MappedPort(ctx, "4566/tcp"))
 
 	return LocalstackContainer{
 		url: fmt.Sprintf("http://%s:%s", host, port),

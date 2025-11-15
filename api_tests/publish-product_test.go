@@ -23,48 +23,41 @@ type PublishProductSuite struct {
 
 func (p *PublishProductSuite) SetupSuite() {
 	p.testEnvironment = testhelpers.NewTestEnvironment()
-	err := p.testEnvironment.Start()
-	p.Require().NoError(err)
+	p.testEnvironment.Start()
 
 	p.productDAO = daos.NewProductDAO(p.testEnvironment.PgxPool())
 }
 
 func (p *PublishProductSuite) SetupTest() {
-	err := p.productDAO.DeletAll()
-	p.Require().NoError(err)
+	p.productDAO.DeletAll()
 }
 
 func (p *PublishProductSuite) Test1() {
 	p.Run("given that the product exists, when publishing, then returns 204 and changes product status to 'published'", func() {
-		err := p.productDAO.Create(daos.ProductSchema{
+		p.productDAO.Create(daos.ProductSchema{
 			Id:          uuid.MustParse("c0981e5b-9cb7-4623-9713-55db0317dc1a"),
 			Name:        "ErgoClick Pro Wireless Mouse",
 			Description: utils.NewPointer("Ergonomically designed wireless optical mouse ..."),
 			Price:       2999,
 			CreatedAt:   time.Now().UTC(),
 		})
-		p.Require().NoError(err)
-		request, err := http.NewRequest("POST", p.testEnvironment.BaseUrl()+"/v1/admin/publish-product", strings.NewReader(`
+
+		request := utils.GetOrThrow(http.NewRequest("POST", p.testEnvironment.BaseUrl()+"/v1/admin/publish-product", strings.NewReader(`
 			{
 				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a"
 			}
-		`))
-		p.Require().NoError(err)
-		accessToken, err := testhelpers.TestGenerateAccessToken(uuid.New())
-		p.Require().NoError(err)
+		`)))
+		accessToken := testhelpers.TestGenerateAccessToken(uuid.New())
 		request.Header.Add("Content-Type", "application/json")
 		request.Header.Add("Authorization", "Bearer "+accessToken)
 
-		response, err := p.testEnvironment.Client().Do(request)
-		p.Require().NoError(err)
+		response := utils.GetOrThrow(p.testEnvironment.Client().Do(request))
 
-		body, err := io.ReadAll(response.Body)
-		p.Require().NoError(err)
+		body := utils.GetOrThrow(io.ReadAll(response.Body))
 		p.Equal(204, response.StatusCode)
 		p.Equal("", string(body))
 
-		productSchema, err := p.productDAO.FindOneById(uuid.MustParse("c0981e5b-9cb7-4623-9713-55db0317dc1a"))
-		p.Require().NoError(err)
+		productSchema := p.productDAO.FindOneById(uuid.MustParse("c0981e5b-9cb7-4623-9713-55db0317dc1a"))
 		p.Require().NotNil(productSchema)
 		p.Require().Equal("published", productSchema.Status)
 	})
@@ -72,22 +65,18 @@ func (p *PublishProductSuite) Test1() {
 
 func (p *PublishProductSuite) Test2() {
 	p.Run("given that the product does not exist, when publishing, then returns 409", func() {
-		request, err := http.NewRequest("POST", p.testEnvironment.BaseUrl()+"/v1/admin/publish-product", strings.NewReader(`
+		request := utils.GetOrThrow(http.NewRequest("POST", p.testEnvironment.BaseUrl()+"/v1/admin/publish-product", strings.NewReader(`
 			{
 				"productId": "c0981e5b-9cb7-4623-9713-55db0317dc1a"
 			}
-		`))
-		p.Require().NoError(err)
-		accessToken, err := testhelpers.TestGenerateAccessToken(uuid.New())
-		p.Require().NoError(err)
+		`)))
+		accessToken := testhelpers.TestGenerateAccessToken(uuid.New())
 		request.Header.Add("Content-Type", "application/json")
 		request.Header.Add("Authorization", "Bearer "+accessToken)
 
-		response, err := p.testEnvironment.Client().Do(request)
-		p.Require().NoError(err)
+		response := utils.GetOrThrow(p.testEnvironment.Client().Do(request))
 
-		body, err := io.ReadAll(response.Body)
-		p.Require().NoError(err)
+		body := utils.GetOrThrow(io.ReadAll(response.Body))
 		p.Equal(409, response.StatusCode)
 		p.JSONEq(`
 			{
@@ -181,18 +170,14 @@ func (p *PublishProductSuite) Test4() {
 		}
 
 		for _, template := range templates {
-			request, err := http.NewRequest("POST", p.testEnvironment.BaseUrl()+"/v1/admin/publish-product", strings.NewReader(template["body"]))
-			p.Require().NoError(err)
-			accessToken, err := testhelpers.TestGenerateAccessToken(uuid.New())
-			p.Require().NoError(err)
+			request := utils.GetOrThrow(http.NewRequest("POST", p.testEnvironment.BaseUrl()+"/v1/admin/publish-product", strings.NewReader(template["body"])))
+			accessToken := testhelpers.TestGenerateAccessToken(uuid.New())
 			request.Header.Add("Content-Type", "application/json")
 			request.Header.Add("Authorization", "Bearer "+accessToken)
 
-			response, err := p.testEnvironment.Client().Do(request)
-			p.Require().NoError(err)
+			response := utils.GetOrThrow(p.testEnvironment.Client().Do(request))
 
-			body, err := io.ReadAll(response.Body)
-			p.Require().NoError(err)
+			body := utils.GetOrThrow(io.ReadAll(response.Body))
 
 			p.Equal(400, response.StatusCode)
 			p.JSONEq(fmt.Sprintf(`

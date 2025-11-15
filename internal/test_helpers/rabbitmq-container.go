@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -15,7 +16,8 @@ type RabbitmqContainer struct {
 
 func NewRabbitmqContainer() (RabbitmqContainer, error) {
 	ctx := context.Background()
-	localStackContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+
+	localStackContainer := utils.GetOrThrow(testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		Started: true,
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "rabbitmq:4.1.4-management",
@@ -26,23 +28,10 @@ func NewRabbitmqContainer() (RabbitmqContainer, error) {
 				"RABBITMQ_DEFAULT_PASS": "guest",
 			},
 		},
-	})
+	}))
 
-	if err != nil {
-		return RabbitmqContainer{}, err
-	}
-
-	host, err := localStackContainer.Host(ctx)
-
-	if err != nil {
-		return RabbitmqContainer{}, err
-	}
-
-	port, err := localStackContainer.MappedPort(ctx, "5672/tcp")
-
-	if err != nil {
-		return RabbitmqContainer{}, err
-	}
+	host := utils.GetOrThrow(localStackContainer.Host(ctx))
+	port := utils.GetOrThrow(localStackContainer.MappedPort(ctx, "5672/tcp"))
 
 	return RabbitmqContainer{
 		url: fmt.Sprintf("amqp://guest:guest@%s:%s", host, port.Port()),

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -34,41 +35,30 @@ func (a *AddProductToCartUsecase) Execute(input AddProductToCartUsecaseInput) er
 		return errors.New("product quantity cannot be zero")
 	}
 
-	productSchema, err := a.productDAO.FindOneById(input.ProductId)
-	if err != nil {
-		return err
-	}
+	productSchema := a.productDAO.FindOneById(input.ProductId)
 
 	if productSchema == nil {
 		return errors.New("product not found")
 	}
 
-	inventorySchema, err := a.inventoryDAO.FindOneByProductId(input.ProductId)
-	if err != nil {
-		return err
-	}
+	inventorySchema := a.inventoryDAO.FindOneByProductId(input.ProductId)
 
 	if input.Quantity > inventorySchema.StockQuantity {
 		return errors.New("product quantity exceeds the stock available")
 	}
 
-	cartSchema, err := a.cartDAO.FindOneByCustomerId(input.CustomerId)
-	if err != nil {
-		return err
-	}
-
-	cartItemSchema, err := a.cartItemDAO.FindOneByCartIdAndProductId(cartSchema.Id, input.ProductId)
-	if err != nil {
-		return err
-	}
+	cartSchema := a.cartDAO.FindOneByCustomerId(input.CustomerId)
+	cartItemSchema := a.cartItemDAO.FindOneByCartIdAndProductId(cartSchema.Id, input.ProductId)
 
 	if cartItemSchema != nil {
-		_, err = a.pgxPool.Exec(context.Background(), "UPDATE cart_items SET quantity = quantity + $1 WHERE id = $2",
-			input.Quantity, cartItemSchema.Id)
-		return err
+		_ = utils.GetOrThrow(a.pgxPool.Exec(context.Background(), "UPDATE cart_items SET quantity = quantity + $1 WHERE id = $2",
+			input.Quantity, cartItemSchema.Id))
+
+		return nil
 	}
 
-	_, err = a.pgxPool.Exec(context.Background(), "INSERT INTO cart_items (id, cart_id, product_id, quantity, created_at) VALUES ($1, $2, $3, $4, $5)",
-		uuid.New(), cartSchema.Id, input.ProductId, input.Quantity, time.Now().UTC())
-	return err
+	_ = utils.GetOrThrow(a.pgxPool.Exec(context.Background(), "INSERT INTO cart_items (id, cart_id, product_id, quantity, created_at) VALUES ($1, $2, $3, $4, $5)",
+		uuid.New(), cartSchema.Id, input.ProductId, input.Quantity, time.Now().UTC()))
+
+	return nil
 }

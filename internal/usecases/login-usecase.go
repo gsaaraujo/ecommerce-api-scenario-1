@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/daos"
 	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/gateways"
+	"github.com/gsaaraujo/ecommerce-api-scenario-1/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -42,10 +43,7 @@ func (l *LoginUsecase) Execute(input LoginUsecaseInput) (LoginUsecaseOutput, err
 		return LoginUsecaseOutput{}, errors.New("email address is invalid")
 	}
 
-	customerSchema, err := l.customerDAO.FindOneByEmail(input.Email)
-	if err != nil {
-		return LoginUsecaseOutput{}, err
-	}
+	customerSchema := l.customerDAO.FindOneByEmail(input.Email)
 
 	if customerSchema == nil {
 		return LoginUsecaseOutput{}, errors.New("email or password is incorrect")
@@ -65,15 +63,8 @@ func (l *LoginUsecase) Execute(input LoginUsecaseInput) (LoginUsecaseOutput, err
 		},
 	})
 
-	accessTokenSigningKey, err := l.awsSecretsGateway.Get("ACCESS_TOKEN_SIGNING_KEY")
-	if err != nil {
-		return LoginUsecaseOutput{}, err
-	}
-
-	acessTokenSigned, err := accessToken.SignedString([]byte(accessTokenSigningKey))
-	if err != nil {
-		return LoginUsecaseOutput{}, err
-	}
+	accessTokenSigningKey := utils.GetOrThrow(l.awsSecretsGateway.Get("ACCESS_TOKEN_SIGNING_KEY"))
+	acessTokenSigned := utils.GetOrThrow(accessToken.SignedString([]byte(accessTokenSigningKey)))
 
 	return LoginUsecaseOutput{
 		CustomerId:  customerSchema.Id,
